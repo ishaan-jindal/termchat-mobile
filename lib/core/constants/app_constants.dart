@@ -3,7 +3,7 @@ class AppConstants {
 
   // --- App Info ---
   static const String appName = 'termchat';
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '1.1.0';
   static const String appDescription = 'minimal anonymous chatrooms';
 
   // ── Spacing ──
