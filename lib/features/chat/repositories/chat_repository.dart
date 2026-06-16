@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'package:injectable/injectable.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-import '../models/message.dart';
-import '../models/backend_message.dart';
+import '../../../core/models/backend_message.dart';
+import '../../../core/models/message.dart';
 
 abstract class ChatRepository {
   Future<void> connect(String roomCode, String nick, {String? password});
@@ -20,7 +20,7 @@ abstract class ChatRepository {
   Stream<List<BackendUserInfo>> get users;
 }
 
-@LazySingleton(as: ChatRepository)
+@Injectable(as: ChatRepository)
 class ChatRepositoryImpl implements ChatRepository {
   WebSocketChannel? _channel;
   final _messagesController = StreamController<Message>.broadcast();
@@ -36,6 +36,8 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> connect(String roomCode, String nick, {String? password}) async {
     final uri = Uri.parse('wss://termchat.sacred99.online/ws');
     _channel = WebSocketChannel.connect(uri);
+
+    final completer = Completer<void>();
 
     // Send join message immediately
     final joinMsg = BackendMessage(
@@ -53,9 +55,17 @@ class ChatRepositoryImpl implements ChatRepository {
         final msg = BackendMessage.fromJson(json);
 
         if (msg.type == 'error' && msg.text == 'invalid_password') {
-          _messagesController.addError('invalid_password');
+          if (!completer.isCompleted) {
+            completer.completeError('invalid_password');
+          } else {
+            _messagesController.addError('invalid_password');
+          }
           disconnect();
           return;
+        }
+
+        if (!completer.isCompleted) {
+          completer.complete();
         }
 
         if (msg.type == 'history') {
@@ -65,7 +75,7 @@ class ChatRepositoryImpl implements ChatRepository {
               _handleIncomingMessage(m, roomCode);
             }
           }
-        } else if (msg.type == 'users') {
+        } else if (msg.type == 'users_list') {
           if (msg.users != null) {
             _usersController.add(msg.users!);
           }
@@ -74,12 +84,20 @@ class ChatRepositoryImpl implements ChatRepository {
         }
       },
       onError: (error) {
-        _messagesController.addError(error);
+        if (!completer.isCompleted) {
+          completer.completeError(error);
+        } else {
+          _messagesController.addError(error);
+        }
       },
       onDone: () {
-        // Handle disconnect if needed
+        if (!completer.isCompleted) {
+          completer.completeError('Disconnected before joining');
+        }
       },
     );
+
+    return completer.future;
   }
 
   void _handleIncomingMessage(BackendMessage backendMsg, String roomCode) {

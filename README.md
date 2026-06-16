@@ -1,146 +1,106 @@
 # termchat-mobile
 
-The mobile companion to termchat.
+> The mobile companion to **termchat**. Real-time, anonymous, room-based chat from your terminal, now on Android and iOS.
 
-termchat-mobile brings the same anonymous, room-based realtime chat experience from the terminal to Android and iOS, while reusing the same backend infrastructure and room system.
+Create a room, share a code, and start chatting instantly. Zero setup, zero tracking.
 
-Create a room, share a code, and start chatting instantly.
-
-No accounts.
-No profiles.
-No friction.
+**No accounts. No profiles. No friction.**
 
 ---
 
-# Features
+## Screenshots
 
-* Anonymous realtime chat rooms
-* Zero account creation
-* Public room discovery
-* Create and join rooms instantly
-* Password-protected rooms
-* Host privileges and automatic host succession
-* Online users list
-* Mention highlighting (`@user`)
-* Nickname customization
-* Nickname color customization
-* Dark / Light / System themes
-* Mobile-first experience
-* Realtime WebSocket messaging
-* Responsive interface
-* Shared backend with termchat CLI
+| Home | Rooms | Chat | Settings |
+| :---: | :---: | :---: | :---: |
+| <img src=".github/assets/home_page.png" width="180" /> | <img src=".github/assets/rooms_page.png" width="180" /> | <img src=".github/assets/chat_page.png" width="180" /> | <img src=".github/assets/settings_page.png" width="180" /> |
+| Browse public rooms & create new ones | Manage your actively joined rooms | Real-time chat with online users drawer | Personalize your nickname, color, and theme |
 
 ---
 
-# Screenshots
+## Features
 
-| Home                                    | Chat                                 | Settings                    |
-| --------------------------------------- | ------------------------------------ | --------------------------- |
-| ![](.github/assets/home_page.png)       |                                      |                             |
-| Browse active rooms and create new ones | Realtime messaging with online users | Personalize your experience |
-
----
-
-# Room System
-
-Rooms are:
-
-* Temporary
-* Automatically created on demand
-* Shareable through room codes
-* Public or password protected
-* Managed by the room host
-
-The first user to join a room becomes the host.
-
-When the host disconnects, ownership is automatically transferred to the next oldest participant in the room.
+- **Anonymous Real-Time Chat:** No signup, no login. Just pick a nickname and start chatting.
+- **Ecosystem Compatibility:** Fully compatible with the existing `termchat` CLI. Chat with terminal users seamlessly!
+- **Active Rooms Discovery:** Browse active public rooms directly from the home feed.
+- **Multi-Chat Support:** Join and keep track of multiple rooms simultaneously, switching between them on the fly.
+- **Security & Roles:** Support for password-protected rooms and automatic room host succession.
+- **Customizable Identity:** Personalize your nickname and choose your unique color theme.
+- **Aesthetics:** Sleek, modern terminal-inspired UI with system dark/light theme support.
 
 ---
 
-# Joining a Room
+## Tech Stack
 
-Join a room by:
-
-* Selecting a public room from discovery
-* Entering a room code
-* Opening a shared room invitation
-* Creating a new room
-
-Room codes are compatible with the existing termchat ecosystem.
+- **Framework:** Flutter (Android & iOS)
+- **State Management:** BLoC (with `flutter_bloc`)
+- **Protocol:** Real-time WebSockets
+- **Backend:** Go (`termchat` API backend)
+- **Design:** Material 3 / Custom Terminal Aesthetics
 
 ---
 
-# Chat Features
+## How It Works
 
-* Realtime messaging
-* Online users panel
-* Host indicators
-* Join and leave notifications
-* Mention highlighting
-* Automatic reconnection
-* Fast message synchronization
+### Room Lifecycle
+- **On-Demand:** Rooms are temporary and created dynamically whenever a user joins a new room code.
+- **Host Succession:** The first user to join a room becomes the host. When the host leaves, ownership is automatically transferred to the next oldest active participant.
+- **Discovery:** Rooms can be public (discoverable on the home screen) or private (accessible only via a direct room code/password).
 
-Example:
+### Cross-Play Compatibility
+`termchat-mobile` shares the same backend API protocol as the `termchat` CLI client, letting terminal users and mobile users chat in the same rooms in real time:
 
 ```text
-Ishaan: hey @zack
-Zack: sup
-Dex: room's working now
+  ┌─────────────────┐       ┌─────────────────┐
+  │ Terminal Client │       │  Mobile Client  │
+  └────────┬────────┘       └────────┬────────┘
+           │                         │
+           └───────────┬─────────────┘
+                       ▼
+               ┌───────────────┐
+               │ termchat API  │
+               └───────────────┘
 ```
 
 ---
 
-# Compatibility
+## Running Locally
 
-termchat-mobile uses the same backend protocol as termchat.
+### Prerequisites
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) (latest stable version)
+- Dart SDK
 
-Users on mobile and terminal clients can participate in the same room simultaneously.
+### Installation & Run
 
-```text
-Terminal Client
-        │
-        ▼
-   termchat API
-        ▲
-        │
-Mobile Client
-```
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/ishaan-jindal/termchat-mobile.git
+   cd termchat-mobile
+   ```
 
----
+2. Install dependencies:
+   ```bash
+   flutter pub get
+   ```
 
-# Technologies
+3. Run the development code generation:
+   ```bash
+   flutter pub run build_runner build --delete-conflicting-outputs
+   ```
 
-* Flutter
-* BLoC
-* WebSockets
-* Go Backend
-* Material 3
-* Cross-platform architecture
-
----
-
-# Philosophy
-
-termchat is designed to feel:
-
-* Instant
-* Anonymous
-* Lightweight
-* Temporary
-* Frictionless
-
-Whether you're in a terminal or on your phone, joining a conversation should take seconds.
+4. Run the app:
+   ```bash
+   flutter run
+   ```
 
 ---
 
-# Related Projects
+## Related Projects
 
-* termchat — Terminal-first chat client
-* termchat-mobile — Mobile companion application
+- [termchat](https://github.com/ishaan-jindal/termchat) — Terminal-first chat client and backend.
+- [termchat-mobile](https://github.com/ishaan-jindal/termchat-mobile) — Mobile companion application.
 
 ---
 
-# License
+## License
 
-MIT
-
+This project is licensed under the [MIT License](LICENSE).

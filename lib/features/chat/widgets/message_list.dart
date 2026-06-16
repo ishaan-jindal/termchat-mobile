@@ -55,7 +55,9 @@ class _MessageListState extends State<MessageList> {
         Future.delayed(const Duration(milliseconds: 50), _scrollToBottom);
       },
       builder: (context, state) {
-        if (state.messages.isEmpty) {
+        final messages = state.messages;
+
+        if (messages.isEmpty) {
           return Center(
             child: Text(
               state.isConnected ? 'No messages yet.' : 'Connecting...',
@@ -67,11 +69,11 @@ class _MessageListState extends State<MessageList> {
         return ListView.separated(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(vertical: AppConstants.spacing24),
-          itemCount: state.messages.length,
+          itemCount: messages.length,
           separatorBuilder: (context, index) =>
               const SizedBox(height: AppConstants.spacing14),
           itemBuilder: (context, index) {
-            final msg = state.messages[index];
+            final msg = messages[index];
 
             if (msg.isSystemMessage) {
               return _buildSystemMessage(context, msg.content);

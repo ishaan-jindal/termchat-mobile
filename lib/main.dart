@@ -7,7 +7,6 @@ import 'core/theme/app_theme.dart';
 import 'features/settings/bloc/identity/identity_bloc.dart';
 import 'features/settings/bloc/settings/settings_bloc.dart';
 import 'features/rooms/bloc/rooms_bloc.dart';
-import 'features/chat/bloc/chat_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,11 +30,11 @@ class TermchatApp extends StatelessWidget {
         BlocProvider<RoomsBloc>(
           create: (_) => getIt<RoomsBloc>()..add(LoadActiveSessions()),
         ),
-        BlocProvider<ChatBloc>(create: (_) => getIt<ChatBloc>()),
       ],
       child: BlocBuilder<SettingsBloc, SettingsState>(
         buildWhen: (previous, current) =>
-            previous.themeMode != current.themeMode,
+            previous.themeMode != current.themeMode ||
+            previous.fontSize != current.fontSize,
         builder: (context, settingsState) {
           final themeMode = settingsState.themeMode == 'light'
               ? ThemeMode.light
@@ -47,8 +46,8 @@ class TermchatApp extends StatelessWidget {
             title: 'Termchat',
             debugShowCheckedModeBanner: false,
             themeMode: themeMode,
-            theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
+            theme: AppTheme.light(fontSize: settingsState.fontSize),
+            darkTheme: AppTheme.dark(fontSize: settingsState.fontSize),
             routerConfig: AppRouter.router,
           );
         },

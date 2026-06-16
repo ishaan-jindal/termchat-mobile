@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../features/settings/bloc/identity/identity_bloc.dart';
 import '../constants/app_constants.dart';
 
 class PasswordPromptModal extends StatefulWidget {
   final String roomCode;
-  final ValueChanged<String> onJoin;
+  final Function(String, String, String) onJoin;
   final VoidCallback? onCancel;
 
   const PasswordPromptModal({
@@ -25,7 +27,14 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
   void _handleJoin() {
     final password = _passwordController.text.trim();
     if (password.isNotEmpty) {
-      widget.onJoin(password);
+      final state = context.read<IdentityBloc>().state;
+      String nick = 'anonymous';
+      String colorHex = '';
+      if (state is IdentityLoaded) {
+        nick = state.user.nickname;
+        colorHex = state.user.colorHex;
+      }
+      widget.onJoin(password, nick, colorHex);
       Navigator.pop(context);
     }
   }
@@ -81,6 +90,46 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
             Text(
               '${widget.roomCode} requires a password',
               style: textTheme.bodySmall,
+            ),
+            const SizedBox(height: AppConstants.spacing16),
+            BlocBuilder<IdentityBloc, IdentityState>(
+              builder: (context, state) {
+                String nick = 'anonymous';
+                Color color = theme.colorScheme.primary;
+                if (state is IdentityLoaded) {
+                  nick = state.user.nickname;
+                  final hex = state.user.colorHex.replaceAll('#', '');
+                  if (hex.length == 6) {
+                    final parsed = int.tryParse('FF$hex', radix: 16);
+                    if (parsed != null) {
+                      color = Color(parsed);
+                    }
+                  }
+                }
+                return Row(
+                  children: [
+                    Text('joining as: ', style: textTheme.labelSmall),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: color.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        nick,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: AppConstants.spacing24),
             Text('password', style: textTheme.labelSmall),

@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../../core/models/room.dart';
-import '../../../core/repositories/room_repository.dart';
+import '../repositories/room_repository.dart';
 
 part 'rooms_state.dart';
 part 'rooms_event.dart';

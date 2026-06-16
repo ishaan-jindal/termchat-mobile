@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../../../core/models/user.dart';
-import '../../../../core/repositories/identity_repository.dart';
+import '../../repositories/identity_repository.dart';
 
 part 'identity_state.dart';
 part 'identity_event.dart';

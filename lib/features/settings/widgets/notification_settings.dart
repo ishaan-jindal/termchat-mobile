@@ -20,21 +20,15 @@ class NotificationSettings extends StatelessWidget {
               context,
               'message notifications',
               state.messageNotificationsEnabled,
-              (v) => context.read<SettingsBloc>().add(
-                ToggleMessageNotifications(v),
-              ),
+              null,
+              subtitle: 'To be implemented soon',
             ),
             _buildSwitchRow(
               context,
               'mention sound',
               state.mentionSoundEnabled,
-              (v) => context.read<SettingsBloc>().add(ToggleMentionSound(v)),
-            ),
-            _buildSwitchRow(
-              context,
-              'join/leave alerts',
-              state.joinLeaveAlertsEnabled,
-              (v) => context.read<SettingsBloc>().add(ToggleJoinLeaveAlerts(v)),
+              null,
+              subtitle: 'To be implemented soon',
             ),
           ],
         );
@@ -46,8 +40,9 @@ class NotificationSettings extends StatelessWidget {
     BuildContext context,
     String title,
     bool value,
-    ValueChanged<bool> onChanged,
-  ) {
+    ValueChanged<bool>? onChanged, {
+    String? subtitle,
+  }) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
@@ -60,7 +55,29 @@ class NotificationSettings extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: textTheme.bodySmall),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: onChanged == null ? theme.disabledColor : null,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: theme.disabledColor,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
           SizedBox(
             height: 20,
             child: Switch(

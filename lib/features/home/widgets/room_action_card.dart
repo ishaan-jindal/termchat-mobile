@@ -5,9 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/widgets/password_prompt_modal.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
 import '../../chat/bloc/chat_bloc.dart';
+import '../../chat/managers/active_chats_manager.dart';
+import '../../../di/injection.dart';
 
 class RoomActionCard extends StatefulWidget {
   const RoomActionCard({super.key});
@@ -27,12 +28,27 @@ class _RoomActionCardState extends State<RoomActionCard> {
     return 'anonymous';
   }
 
+  String _getColor() {
+    final identityState = context.read<IdentityBloc>().state;
+    if (identityState is IdentityLoaded) {
+      return identityState.user.colorHex;
+    }
+    return '';
+  }
+
   void _handleJoin() {
     final roomCode = _controller.text.trim();
     if (roomCode.isNotEmpty) {
-      context.read<ChatBloc>().add(
-        ConnectChat(roomCode: roomCode, nick: _getNick()),
-      );
+      final chatBloc = getIt<ActiveChatsManager>().getOrCreate(roomCode);
+      if (!chatBloc.state.isConnected && !chatBloc.state.isLoading) {
+        chatBloc.add(
+          ConnectChat(
+            roomCode: roomCode,
+            nick: _getNick(),
+            colorHex: _getColor(),
+          ),
+        );
+      }
       context.go('/chat/$roomCode');
     }
   }
@@ -47,9 +63,12 @@ class _RoomActionCardState extends State<RoomActionCard> {
       ),
     );
 
-    context.read<ChatBloc>().add(
-      ConnectChat(roomCode: newCode, nick: _getNick()),
-    );
+    final chatBloc = getIt<ActiveChatsManager>().getOrCreate(newCode);
+    if (!chatBloc.state.isConnected && !chatBloc.state.isLoading) {
+      chatBloc.add(
+        ConnectChat(roomCode: newCode, nick: _getNick(), colorHex: _getColor()),
+      );
+    }
     context.go('/chat/$newCode');
   }
 
@@ -59,93 +78,61 @@ class _RoomActionCardState extends State<RoomActionCard> {
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
 
-    return BlocListener<ChatBloc, ChatState>(
-      listenWhen: (previous, current) =>
-          previous.error != current.error && current.error != null,
-      listener: (context, state) {
-        if (state.error == 'invalid_password') {
-          // If we tried to join from home and need a password
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (bottomSheetContext) => PasswordPromptModal(
-              roomCode: _controller.text.trim(),
-              onJoin: (password) {
-                context.read<ChatBloc>().add(
-                  ConnectChat(
-                    roomCode: _controller.text.trim(),
-                    nick: _getNick(),
-                    password: password,
-                  ),
-                );
-                // We are already on /chat page since we navigated earlier,
-                // but if not, we can navigate here.
-              },
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: ${state.error}')));
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.all(AppConstants.spacing20),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(AppConstants.radius12),
-          border: Border.all(color: theme.dividerColor),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('room code', style: textTheme.bodySmall),
-            const SizedBox(height: AppConstants.spacing12),
-            TextField(
-              controller: _controller,
-              decoration: const InputDecoration(hintText: '> e.g. FROG'),
-              style: textTheme.bodyLarge,
-              textCapitalization: TextCapitalization.characters,
-              onSubmitted: (_) => _handleJoin(),
-            ),
-            const SizedBox(height: AppConstants.spacing16),
-            FilledButton(
-              onPressed: _handleJoin,
-              style: FilledButton.styleFrom(
-                backgroundColor: colorScheme.onSurface,
-                foregroundColor: colorScheme.surface,
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppConstants.spacing12,
-                ),
+    return Container(
+      padding: const EdgeInsets.all(AppConstants.spacing20),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(AppConstants.radius12),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('room code', style: textTheme.bodySmall),
+          const SizedBox(height: AppConstants.spacing12),
+          TextField(
+            controller: _controller,
+            decoration: const InputDecoration(hintText: '> e.g. FROG'),
+            style: textTheme.bodyLarge,
+            textCapitalization: TextCapitalization.characters,
+            onSubmitted: (_) => _handleJoin(),
+          ),
+          const SizedBox(height: AppConstants.spacing16),
+          FilledButton(
+            onPressed: _handleJoin,
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.onSurface,
+              foregroundColor: colorScheme.surface,
+              padding: const EdgeInsets.symmetric(
+                vertical: AppConstants.spacing12,
               ),
-              child: const Text('join room'),
             ),
-            const SizedBox(height: AppConstants.spacing24),
-            Row(
-              children: [
-                Expanded(child: Divider(color: theme.dividerColor)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppConstants.spacing16,
-                  ),
-                  child: Text('or', style: textTheme.labelSmall),
-                ),
-                Expanded(child: Divider(color: theme.dividerColor)),
-              ],
-            ),
-            const SizedBox(height: AppConstants.spacing24),
-            OutlinedButton(
-              onPressed: _handleCreate,
-              style: OutlinedButton.styleFrom(
+            child: const Text('join room'),
+          ),
+          const SizedBox(height: AppConstants.spacing24),
+          Row(
+            children: [
+              Expanded(child: Divider(color: theme.dividerColor)),
+              Padding(
                 padding: const EdgeInsets.symmetric(
-                  vertical: AppConstants.spacing12,
+                  horizontal: AppConstants.spacing16,
                 ),
+                child: Text('or', style: textTheme.labelSmall),
               ),
-              child: const Text('+ create a new room'),
+              Expanded(child: Divider(color: theme.dividerColor)),
+            ],
+          ),
+          const SizedBox(height: AppConstants.spacing24),
+          OutlinedButton(
+            onPressed: _handleCreate,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                vertical: AppConstants.spacing12,
+              ),
             ),
-          ],
-        ),
+            child: const Text('+ create a new room'),
+          ),
+        ],
       ),
     );
   }

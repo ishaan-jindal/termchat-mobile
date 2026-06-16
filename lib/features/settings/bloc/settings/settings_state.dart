@@ -5,7 +5,6 @@ class SettingsState extends Equatable {
   final String fontSize;
   final bool messageNotificationsEnabled;
   final bool mentionSoundEnabled;
-  final bool joinLeaveAlertsEnabled;
   final bool isLoading;
   final String? error;
 
@@ -14,7 +13,6 @@ class SettingsState extends Equatable {
     this.fontSize = 'sm',
     this.messageNotificationsEnabled = true,
     this.mentionSoundEnabled = true,
-    this.joinLeaveAlertsEnabled = false,
     this.isLoading = false,
     this.error,
   });
@@ -24,7 +22,6 @@ class SettingsState extends Equatable {
     String? fontSize,
     bool? messageNotificationsEnabled,
     bool? mentionSoundEnabled,
-    bool? joinLeaveAlertsEnabled,
     bool? isLoading,
     String? error,
   }) {
@@ -34,8 +31,6 @@ class SettingsState extends Equatable {
       messageNotificationsEnabled:
           messageNotificationsEnabled ?? this.messageNotificationsEnabled,
       mentionSoundEnabled: mentionSoundEnabled ?? this.mentionSoundEnabled,
-      joinLeaveAlertsEnabled:
-          joinLeaveAlertsEnabled ?? this.joinLeaveAlertsEnabled,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -47,7 +42,6 @@ class SettingsState extends Equatable {
     fontSize,
     messageNotificationsEnabled,
     mentionSoundEnabled,
-    joinLeaveAlertsEnabled,
     isLoading,
     error,
   ];

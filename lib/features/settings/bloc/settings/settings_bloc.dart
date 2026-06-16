@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
-import '../../../../core/repositories/settings_repository.dart';
+import '../../repositories/settings_repository.dart';
 
 part 'settings_state.dart';
 part 'settings_event.dart';
@@ -17,7 +17,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<UpdateFontSize>(_onUpdateFontSize);
     on<ToggleMessageNotifications>(_onToggleMessageNotifications);
     on<ToggleMentionSound>(_onToggleMentionSound);
-    on<ToggleJoinLeaveAlerts>(_onToggleJoinLeaveAlerts);
   }
 
   Future<void> _onLoadSettings(
@@ -30,7 +29,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       final font = await _repository.getFontSize();
       final msgNotif = await _repository.getMessageNotifications();
       final mention = await _repository.getMentionSound();
-      final alerts = await _repository.getJoinLeaveAlerts();
 
       emit(
         state.copyWith(
@@ -38,7 +36,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
           fontSize: font,
           messageNotificationsEnabled: msgNotif,
           mentionSoundEnabled: mention,
-          joinLeaveAlertsEnabled: alerts,
           isLoading: false,
         ),
       );
@@ -90,18 +87,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     try {
       await _repository.setMentionSound(event.enabled);
       emit(state.copyWith(mentionSoundEnabled: event.enabled));
-    } catch (e) {
-      emit(state.copyWith(error: e.toString()));
-    }
-  }
-
-  Future<void> _onToggleJoinLeaveAlerts(
-    ToggleJoinLeaveAlerts event,
-    Emitter<SettingsState> emit,
-  ) async {
-    try {
-      await _repository.setJoinLeaveAlerts(event.enabled);
-      emit(state.copyWith(joinLeaveAlertsEnabled: event.enabled));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }

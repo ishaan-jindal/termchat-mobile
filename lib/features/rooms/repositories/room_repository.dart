@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
 
-import '../models/room.dart';
-import '../models/backend_message.dart';
+import '../../../core/models/backend_message.dart';
+import '../../../core/models/room.dart';
 
 abstract class RoomRepository {
   Future<List<Room>> getActiveSessions();

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../bloc/chat_bloc.dart';
+import '../managers/active_chats_manager.dart';
+import '../../../di/injection.dart';
 
 class RoomUsersDrawer extends StatelessWidget {
   final String roomName;
@@ -18,9 +20,9 @@ class RoomUsersDrawer extends StatelessWidget {
     return Color(int.tryParse(hex, radix: 16) ?? 0xFFFFFFFF);
   }
 
-  String _formatJoinTime(int timestampMs) {
-    if (timestampMs == 0) return 'recently';
-    final joinedAt = DateTime.fromMillisecondsSinceEpoch(timestampMs);
+  String _formatJoinTime(int timestampSecs) {
+    if (timestampSecs == 0) return 'recently';
+    final joinedAt = DateTime.fromMillisecondsSinceEpoch(timestampSecs * 1000);
     final diff = DateTime.now().difference(joinedAt);
     if (diff.inMinutes < 1) return 'just now';
     if (diff.inHours < 1) return '${diff.inMinutes}m ago';
@@ -91,7 +93,11 @@ class RoomUsersDrawer extends StatelessWidget {
                 const SizedBox(height: AppConstants.spacing16),
                 OutlinedButton(
                   onPressed: () {
-                    context.read<ChatBloc>().add(DisconnectChat());
+                    final roomCode =
+                        context.read<ChatBloc>().state.roomCode ?? '';
+                    if (roomCode.isNotEmpty) {
+                      getIt<ActiveChatsManager>().remove(roomCode);
+                    }
                     Navigator.pop(context); // close bottom sheet
                     context.go('/'); // Go back to home
                   },

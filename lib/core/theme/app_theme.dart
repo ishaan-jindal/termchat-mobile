@@ -6,11 +6,19 @@ import 'package:termchat_app/core/theme/app_text_styles.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData light() => _buildTheme(false);
+  static ThemeData light({String fontSize = 'sm'}) =>
+      _buildTheme(false, fontSize);
 
-  static ThemeData dark() => _buildTheme(true);
+  static ThemeData dark({String fontSize = 'sm'}) =>
+      _buildTheme(true, fontSize);
 
-  static ThemeData _buildTheme(bool isDark) {
+  static ThemeData _buildTheme(bool isDark, String fontSize) {
+    double scaleFactor = 1.0;
+    if (fontSize == 'md') {
+      scaleFactor = 1.15;
+    } else if (fontSize == 'lg') {
+      scaleFactor = 1.3;
+    }
     final background = isDark ? AppColors.bgAppDark : AppColors.bgAppLight;
 
     final surface = isDark ? AppColors.bgSurfaceDark : AppColors.bgSurfaceLight;
@@ -88,7 +96,7 @@ class AppTheme {
         labelLarge: AppTextStyles.username.copyWith(color: primaryText),
         labelMedium: AppTextStyles.meta.copyWith(color: secondaryText),
         labelSmall: AppTextStyles.meta.copyWith(color: tertiaryText),
-      ),
+      ).apply(fontSizeFactor: scaleFactor),
 
       appBarTheme: AppBarTheme(
         elevation: 0,

@@ -9,6 +9,8 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/password_prompt_modal.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
 import '../../chat/bloc/chat_bloc.dart';
+import '../../chat/managers/active_chats_manager.dart';
+import '../../../di/injection.dart';
 import '../../rooms/bloc/rooms_bloc.dart';
 
 class HomePage extends StatelessWidget {
@@ -17,27 +19,41 @@ class HomePage extends StatelessWidget {
   void _handleJoinRoom(BuildContext context, String roomCode, bool isLocked) {
     final identityState = context.read<IdentityBloc>().state;
     String nick = 'anonymous';
+    String colorHex = '';
     if (identityState is IdentityLoaded) {
       nick = identityState.user.nickname;
+      colorHex = identityState.user.colorHex;
     }
 
-    if (isLocked) {
+    final chatBloc = getIt<ActiveChatsManager>().getOrCreate(roomCode);
+    final isConnected = chatBloc.state.isConnected || chatBloc.state.isLoading;
+
+    if (isLocked && !isConnected) {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (bottomSheetContext) => PasswordPromptModal(
           roomCode: roomCode,
-          onJoin: (password) {
-            context.read<ChatBloc>().add(
-              ConnectChat(roomCode: roomCode, nick: nick, password: password),
+          onJoin: (password, nick, colorHex) {
+            chatBloc.add(
+              ConnectChat(
+                roomCode: roomCode,
+                nick: nick,
+                colorHex: colorHex,
+                password: password,
+              ),
             );
             context.go('/chat/$roomCode');
           },
         ),
       );
     } else {
-      context.read<ChatBloc>().add(ConnectChat(roomCode: roomCode, nick: nick));
+      if (!isConnected) {
+        chatBloc.add(
+          ConnectChat(roomCode: roomCode, nick: nick, colorHex: colorHex),
+        );
+      }
       context.go('/chat/$roomCode');
     }
   }
@@ -118,6 +134,11 @@ class HomePage extends StatelessWidget {
                                 name: room.name,
                                 users: room.usersCount,
                                 isLocked: room.isLocked,
+                                onJoin: () => _handleJoinRoom(
+                                  context,
+                                  room.name,
+                                  room.isLocked,
+                                ),
                               ),
                             ),
                           );

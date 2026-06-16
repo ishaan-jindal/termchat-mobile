@@ -6,7 +6,7 @@ import 'package:injectable/injectable.dart';
 
 import '../../../core/models/message.dart';
 import '../../../core/models/backend_message.dart';
-import '../../../core/repositories/chat_repository.dart';
+import '../repositories/chat_repository.dart';
 
 part 'chat_state.dart';
 part 'chat_event.dart';
@@ -64,6 +64,10 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           roomCode: event.roomCode,
         ),
       );
+
+      if (event.colorHex.isNotEmpty) {
+        add(SendMessage('/color ${event.colorHex}'));
+      }
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }
@@ -89,6 +93,24 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         } else if (cmd == '/password') {
           final newPass = parts.length > 1 ? parts.sublist(1).join(' ') : '';
           add(SetRoomPassword(newPass));
+          return;
+        } else if (cmd == '/help') {
+          final helpMsg = Message(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            roomId: state.roomCode ?? '',
+            senderId: 'system',
+            senderNickname: 'system',
+            senderColorHex: '#888888',
+            content: 'Commands: /help /clear /nick /color /password /quit',
+            timestamp: DateTime.now(),
+            isSystemMessage: true,
+          );
+          emit(
+            state.copyWith(messages: List.from(state.messages)..add(helpMsg)),
+          );
+          return;
+        } else if (cmd == '/clear') {
+          emit(state.copyWith(messages: []));
           return;
         }
       }

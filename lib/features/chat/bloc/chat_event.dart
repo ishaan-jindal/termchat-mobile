@@ -10,16 +10,18 @@ abstract class ChatEvent extends Equatable {
 class ConnectChat extends ChatEvent {
   final String roomCode;
   final String nick;
+  final String colorHex;
   final String? password;
 
   const ConnectChat({
     required this.roomCode,
     required this.nick,
+    required this.colorHex,
     this.password,
   });
 
   @override
-  List<Object?> get props => [roomCode, nick, password];
+  List<Object?> get props => [roomCode, nick, colorHex, password];
 }
 
 class SendMessage extends ChatEvent {

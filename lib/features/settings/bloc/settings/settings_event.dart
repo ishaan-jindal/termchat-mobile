@@ -36,10 +36,3 @@ class ToggleMentionSound extends SettingsEvent {
   @override
   List<Object?> get props => [enabled];
 }
-
-class ToggleJoinLeaveAlerts extends SettingsEvent {
-  final bool enabled;
-  const ToggleJoinLeaveAlerts(this.enabled);
-  @override
-  List<Object?> get props => [enabled];
-}

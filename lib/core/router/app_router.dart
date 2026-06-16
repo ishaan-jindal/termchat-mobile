@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../features/main/pages/main_layout.dart';
 import '../../features/home/pages/home_page.dart';
 import '../../features/chat/pages/chat_page.dart';
+import '../../features/chat/managers/active_chats_manager.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../di/injection.dart';
 import '../../features/rooms/pages/rooms_page.dart';
 import '../../features/settings/pages/settings_page.dart';
 
@@ -31,7 +34,16 @@ class AppRouter {
                 routes: [
                   GoRoute(
                     path: 'chat/:roomId',
-                    builder: (context, state) => const ChatPage(),
+                    builder: (context, state) {
+                      final roomId = state.pathParameters['roomId']!;
+                      final chatBloc = getIt<ActiveChatsManager>().getOrCreate(
+                        roomId,
+                      );
+                      return BlocProvider.value(
+                        value: chatBloc,
+                        child: const ChatPage(),
+                      );
+                    },
                   ),
                 ],
               ),

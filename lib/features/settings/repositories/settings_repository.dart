@@ -1,4 +1,5 @@
 import 'package:injectable/injectable.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 abstract class SettingsRepository {
   Future<String> getThemeMode();
@@ -12,65 +13,55 @@ abstract class SettingsRepository {
 
   Future<bool> getMentionSound();
   Future<void> setMentionSound(bool enabled);
-
-  Future<bool> getJoinLeaveAlerts();
-  Future<void> setJoinLeaveAlerts(bool enabled);
 }
 
 @LazySingleton(as: SettingsRepository)
 class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<String> getThemeMode() async {
-    // TODO: Implement SharedPreferences
-    return 'dark';
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('theme_mode') ?? 'dark';
   }
 
   @override
   Future<void> setThemeMode(String mode) async {
-    // TODO: Implement SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('theme_mode', mode);
   }
 
   @override
   Future<String> getFontSize() async {
-    // TODO: Implement SharedPreferences
-    return 'sm';
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('font_size') ?? 'sm';
   }
 
   @override
   Future<void> setFontSize(String size) async {
-    // TODO: Implement SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('font_size', size);
   }
 
   @override
   Future<bool> getMessageNotifications() async {
-    // TODO: Implement SharedPreferences
-    return true;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('msg_notifications') ?? true;
   }
 
   @override
   Future<void> setMessageNotifications(bool enabled) async {
-    // TODO: Implement SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('msg_notifications', enabled);
   }
 
   @override
   Future<bool> getMentionSound() async {
-    // TODO: Implement SharedPreferences
-    return true;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('mention_sound') ?? true;
   }
 
   @override
   Future<void> setMentionSound(bool enabled) async {
-    // TODO: Implement SharedPreferences
-  }
-
-  @override
-  Future<bool> getJoinLeaveAlerts() async {
-    // TODO: Implement SharedPreferences
-    return false;
-  }
-
-  @override
-  Future<void> setJoinLeaveAlerts(bool enabled) async {
-    // TODO: Implement SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('mention_sound', enabled);
   }
 }
