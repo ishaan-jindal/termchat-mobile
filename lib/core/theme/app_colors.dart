@@ -36,6 +36,8 @@ class AppColors {
   // Mentions
   static const Color mentionBgDark = Color(0xFF333330);
   static const Color mentionBgLight = Color(0xFFE9E7DF);
+  static const Color mentionTextDark = Color(0xFFFFFFFF);
+  static const Color mentionTextLight = Color(0xFF2B2A27);
 
   // Base Colors - Dark
   static const Color errorDark = Color(0xFFFF6B6B);

@@ -20,18 +20,18 @@ class HomePage extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
             child: ListView(
-              padding: const EdgeInsets.all(AppConstants.spacingLg),
+              padding: const EdgeInsets.all(AppConstants.spacing24),
               children: [
-                const SizedBox(height: AppConstants.spacingXxl),
+                const SizedBox(height: AppConstants.spacing48),
                 const HomeHeader(),
-                const SizedBox(height: AppConstants.spacingXxl),
+                const SizedBox(height: AppConstants.spacing48),
 
                 const RoomActionCard(),
-                const SizedBox(height: AppConstants.spacingXxl),
+                const SizedBox(height: AppConstants.spacing48),
 
                 // Rooms Online Now Header
                 Row(
-                  mainAxisAlignment: .spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('rooms online now', style: textTheme.bodySmall),
                     GestureDetector(
@@ -40,15 +40,15 @@ class HomePage extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppConstants.spacingMd),
+                const SizedBox(height: AppConstants.spacing16),
 
                 // Room List
                 const RoomCard(name: 'FROG', users: 5, isLocked: false),
-                const SizedBox(height: AppConstants.spacingMd),
+                const SizedBox(height: AppConstants.spacing16),
                 const RoomCard(name: 'ZCKT', users: 2, isLocked: true),
-                const SizedBox(height: AppConstants.spacingMd),
+                const SizedBox(height: AppConstants.spacing16),
                 const RoomCard(name: 'BETA', users: 1, isLocked: false),
-                const SizedBox(height: AppConstants.spacingXxl),
+                const SizedBox(height: AppConstants.spacing48),
               ],
             ),
           ),

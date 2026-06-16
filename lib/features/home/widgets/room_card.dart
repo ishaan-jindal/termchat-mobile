@@ -22,20 +22,20 @@ class RoomCard extends StatelessWidget {
     final textTheme = theme.textTheme;
 
     return Container(
-      padding: const .all(AppConstants.spacingMd),
+      padding: const EdgeInsets.all(AppConstants.spacing20),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: .circular(AppConstants.radiusMd),
-        border: .all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(AppConstants.radius12),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Row(
-        mainAxisAlignment: .spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Column(
-            crossAxisAlignment: .start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(name, style: textTheme.titleMedium),
-              const SizedBox(height: AppConstants.spacingXs),
+              const SizedBox(height: AppConstants.spacing4),
               Row(
                 children: [
                   Container(
@@ -43,10 +43,10 @@ class RoomCard extends StatelessWidget {
                     height: 6,
                     decoration: const BoxDecoration(
                       color: AppColors.successDark,
-                      shape: .circle,
+                      shape: BoxShape.circle,
                     ),
                   ),
-                  const SizedBox(width: AppConstants.spacingSm),
+                  const SizedBox(width: AppConstants.spacing8),
                   Text(
                     '$users user${users != 1 ? 's' : ''}${isLocked ? ' · locked' : ''}',
                     style: textTheme.bodySmall,
@@ -58,11 +58,11 @@ class RoomCard extends StatelessWidget {
           OutlinedButton(
             onPressed: onJoin ?? () {},
             style: OutlinedButton.styleFrom(
-              padding: const .symmetric(
-                horizontal: AppConstants.spacingMd,
-                vertical: AppConstants.spacingSm,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.spacing16,
+                vertical: AppConstants.spacing12,
               ),
-              minimumSize: .zero,
+              minimumSize: Size.zero,
             ),
             child: const Text('join →'),
           ),

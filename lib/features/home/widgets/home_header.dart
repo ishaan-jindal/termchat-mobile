@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:termchat_app/core/constants/app_constants.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_text_styles.dart';
 
 class HomeHeader extends StatelessWidget {
   const HomeHeader({super.key});
@@ -17,21 +18,19 @@ class HomeHeader extends StatelessWidget {
           children: [
             Text(
               '\$ ',
-              style: textTheme.displayLarge?.copyWith(
+              style: AppTextStyles.wordmark.copyWith(
                 color: colorScheme.onSurface.withValues(alpha: 0.5),
-                fontSize: 28,
               ),
             ),
             Text(
               AppConstants.appName,
-              style: textTheme.displayLarge?.copyWith(
+              style: AppTextStyles.wordmark.copyWith(
                 color: colorScheme.onSurface,
-                fontSize: 28,
               ),
             ),
           ],
         ),
-        const SizedBox(height: AppConstants.spacingSm),
+        const SizedBox(height: AppConstants.spacing8),
         Text(
           AppConstants.appDescription,
           textAlign: TextAlign.center,
