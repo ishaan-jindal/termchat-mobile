@@ -2,10 +2,24 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 
-class JoinAnotherRoomForm extends StatelessWidget {
-  final VoidCallback onJoin;
+class JoinAnotherRoomForm extends StatefulWidget {
+  final ValueChanged<String> onJoin;
 
   const JoinAnotherRoomForm({super.key, required this.onJoin});
+
+  @override
+  State<JoinAnotherRoomForm> createState() => _JoinAnotherRoomFormState();
+}
+
+class _JoinAnotherRoomFormState extends State<JoinAnotherRoomForm> {
+  final _controller = TextEditingController();
+
+  void _handleJoin() {
+    final roomCode = _controller.text.trim();
+    if (roomCode.isNotEmpty) {
+      widget.onJoin(roomCode);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,12 +32,15 @@ class JoinAnotherRoomForm extends StatelessWidget {
         Text('join another', style: textTheme.labelSmall),
         const SizedBox(height: AppConstants.spacing12),
         TextField(
+          controller: _controller,
           decoration: const InputDecoration(hintText: '> room code'),
           style: textTheme.bodyLarge,
+          textCapitalization: TextCapitalization.characters,
+          onSubmitted: (_) => _handleJoin(),
         ),
         const SizedBox(height: AppConstants.spacing16),
         FilledButton(
-          onPressed: onJoin,
+          onPressed: _handleJoin,
           style: FilledButton.styleFrom(
             backgroundColor: theme.colorScheme.onSurface,
             foregroundColor: theme.colorScheme.surface,
@@ -35,5 +52,11 @@ class JoinAnotherRoomForm extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }

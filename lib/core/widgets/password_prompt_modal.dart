@@ -2,17 +2,33 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
 
-class PasswordPromptModal extends StatelessWidget {
-  final String roomName;
-  final VoidCallback onCancel;
-  final VoidCallback onJoin;
+class PasswordPromptModal extends StatefulWidget {
+  final String roomCode;
+  final ValueChanged<String> onJoin;
+  final VoidCallback? onCancel;
 
   const PasswordPromptModal({
     super.key,
-    required this.roomName,
-    required this.onCancel,
+    required this.roomCode,
     required this.onJoin,
+    this.onCancel,
   });
+
+  @override
+  State<PasswordPromptModal> createState() => _PasswordPromptModalState();
+}
+
+class _PasswordPromptModalState extends State<PasswordPromptModal> {
+  final _passwordController = TextEditingController();
+  bool _obscureText = true;
+
+  void _handleJoin() {
+    final password = _passwordController.text.trim();
+    if (password.isNotEmpty) {
+      widget.onJoin(password);
+      Navigator.pop(context);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,42 +78,48 @@ class PasswordPromptModal extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppConstants.spacing8),
-            Text('$roomName requires a password', style: textTheme.bodySmall),
+            Text(
+              '${widget.roomCode} requires a password',
+              style: textTheme.bodySmall,
+            ),
             const SizedBox(height: AppConstants.spacing24),
             Text('password', style: textTheme.labelSmall),
             const SizedBox(height: AppConstants.spacing8),
             TextField(
-              obscureText: true,
+              controller: _passwordController,
+              obscureText: _obscureText,
               decoration: const InputDecoration(hintText: '> ********'),
               style: textTheme.bodyLarge,
+              onSubmitted: (_) => _handleJoin(),
             ),
             const SizedBox(height: AppConstants.spacing8),
             Align(
               alignment: Alignment.centerRight,
               child: GestureDetector(
-                onTap: () {},
-                child: Text('show password', style: textTheme.labelSmall),
+                onTap: () {
+                  setState(() {
+                    _obscureText = !_obscureText;
+                  });
+                },
+                child: Text(
+                  _obscureText ? 'show password' : 'hide password',
+                  style: textTheme.labelSmall,
+                ),
               ),
             ),
             const SizedBox(height: AppConstants.spacing24),
-            // Example error state:
-            // Text(
-            //   '• incorrect password',
-            //   style: textTheme.bodySmall?.copyWith(color: AppColors.errorDark),
-            // ),
-            // const SizedBox(height: AppConstants.spacing16),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: onCancel,
+                    onPressed: widget.onCancel ?? () => Navigator.pop(context),
                     child: const Text('cancel'),
                   ),
                 ),
                 const SizedBox(width: AppConstants.spacing16),
                 Expanded(
                   child: FilledButton(
-                    onPressed: onJoin,
+                    onPressed: _handleJoin,
                     style: FilledButton.styleFrom(
                       backgroundColor: theme.colorScheme.onSurface,
                       foregroundColor: theme.colorScheme.surface,
@@ -111,5 +133,11 @@ class PasswordPromptModal extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
   }
 }

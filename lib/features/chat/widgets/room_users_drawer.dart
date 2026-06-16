@@ -1,81 +1,114 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../bloc/chat_bloc.dart';
 
 class RoomUsersDrawer extends StatelessWidget {
   final String roomName;
 
   const RoomUsersDrawer({super.key, required this.roomName});
 
+  Color _parseColor(String hex) {
+    hex = hex.replaceAll('#', '');
+    if (hex.length == 6) {
+      hex = 'FF$hex';
+    }
+    return Color(int.tryParse(hex, radix: 16) ?? 0xFFFFFFFF);
+  }
+
+  String _formatJoinTime(int timestampMs) {
+    if (timestampMs == 0) return 'recently';
+    final joinedAt = DateTime.fromMillisecondsSinceEpoch(timestampMs);
+    final diff = DateTime.now().difference(joinedAt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inDays < 1) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppConstants.radius16),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppConstants.spacing24,
-        vertical: AppConstants.spacing24,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return BlocBuilder<ChatBloc, ChatState>(
+      builder: (context, state) {
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppConstants.radius16),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppConstants.spacing24,
+            vertical: AppConstants.spacing24,
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('users in $roomName', style: textTheme.bodySmall),
-                Text('3 online', style: textTheme.bodySmall),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('users in $roomName', style: textTheme.bodySmall),
+                    Text(
+                      '${state.users.length} online',
+                      style: textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppConstants.spacing20),
+                if (state.users.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'No users loaded',
+                        style: textTheme.bodySmall,
+                      ),
+                    ),
+                  ),
+                ...state.users.map((user) {
+                  return Padding(
+                    padding: const EdgeInsets.only(
+                      bottom: AppConstants.spacing16,
+                    ),
+                    child: _buildUserRow(
+                      context: context,
+                      username: user.nick,
+                      color: _parseColor(user.color),
+                      isHost: user.isHost,
+                      isTyping: user.typing,
+                      metaText: '· joined ${_formatJoinTime(user.joinedAt)}',
+                    ),
+                  );
+                }),
+                const SizedBox(height: AppConstants.spacing16),
+                OutlinedButton(
+                  onPressed: () {
+                    context.read<ChatBloc>().add(DisconnectChat());
+                    Navigator.pop(context); // close bottom sheet
+                    context.go('/'); // Go back to home
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                    side: BorderSide(color: theme.dividerColor),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppConstants.spacing12,
+                    ),
+                  ),
+                  child: const Text('/quit · leave room'),
+                ),
               ],
             ),
-            const SizedBox(height: AppConstants.spacing20),
-            _buildUserRow(
-              context: context,
-              username: 'Ishaan',
-              color: const Color(0xFFFF6B6B),
-              isHost: true,
-              metaText: '· joined 2m ago',
-            ),
-            const SizedBox(height: AppConstants.spacing16),
-            _buildUserRow(
-              context: context,
-              username: 'Zack',
-              color: const Color(0xFF51CF66),
-              isTyping: true,
-              metaText: '· joined 1m ago',
-            ),
-            const SizedBox(height: AppConstants.spacing16),
-            _buildUserRow(
-              context: context,
-              username: 'Alex',
-              color: const Color(0xFF1F6FEB),
-              metaText: '· joined 45s ago',
-            ),
-            const SizedBox(height: AppConstants.spacing32),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: theme.colorScheme.error,
-                side: BorderSide(color: theme.dividerColor),
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppConstants.spacing12,
-                ),
-              ),
-              child: const Text('/quit · leave room'),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -97,7 +130,7 @@ class RoomUsersDrawer extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           alignment: Alignment.center,
           child: Text(
-            username.substring(0, 1).toUpperCase(),
+            username.isNotEmpty ? username.substring(0, 1).toUpperCase() : '?',
             style: textTheme.labelSmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.bold,
