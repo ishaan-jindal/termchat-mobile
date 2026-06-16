@@ -5,10 +5,7 @@ import '../../../core/constants/app_constants.dart';
 class ChatInputArea extends StatelessWidget {
   final VoidCallback onSend;
 
-  const ChatInputArea({
-    super.key,
-    required this.onSend,
-  });
+  const ChatInputArea({super.key, required this.onSend});
 
   @override
   Widget build(BuildContext context) {
@@ -22,9 +19,7 @@ class ChatInputArea extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
-        border: Border(
-          top: BorderSide(color: theme.dividerColor),
-        ),
+        border: Border(top: BorderSide(color: theme.dividerColor)),
       ),
       child: SafeArea(
         top: false,

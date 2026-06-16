@@ -22,9 +22,7 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
     return Container(
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
-        border: Border(
-          bottom: BorderSide(color: theme.dividerColor),
-        ),
+        border: Border(bottom: BorderSide(color: theme.dividerColor)),
       ),
       padding: const EdgeInsets.symmetric(
         horizontal: AppConstants.spacing24,
@@ -39,10 +37,7 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  roomName,
-                  style: textTheme.headlineMedium,
-                ),
+                Text(roomName, style: textTheme.headlineMedium),
                 const SizedBox(height: AppConstants.spacing4),
                 Row(
                   children: [
@@ -55,20 +50,14 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
                       ),
                     ),
                     const SizedBox(width: AppConstants.spacing8),
-                    Text(
-                      'connected',
-                      style: textTheme.bodySmall,
-                    ),
+                    Text('connected', style: textTheme.bodySmall),
                   ],
                 ),
               ],
             ),
             GestureDetector(
               onTap: onOpenDrawer,
-              child: Text(
-                '$usersCount users ›',
-                style: textTheme.bodySmall,
-              ),
+              child: Text('$usersCount users ›', style: textTheme.bodySmall),
             ),
           ],
         ),

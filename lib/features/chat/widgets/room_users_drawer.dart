@@ -5,10 +5,7 @@ import '../../../core/constants/app_constants.dart';
 class RoomUsersDrawer extends StatelessWidget {
   final String roomName;
 
-  const RoomUsersDrawer({
-    super.key,
-    required this.roomName,
-  });
+  const RoomUsersDrawer({super.key, required this.roomName});
 
   @override
   Widget build(BuildContext context) {
@@ -97,10 +94,7 @@ class RoomUsersDrawer extends StatelessWidget {
         Container(
           width: 20,
           height: 20,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           alignment: Alignment.center,
           child: Text(
             username.substring(0, 1).toUpperCase(),
@@ -164,10 +158,7 @@ class RoomUsersDrawer extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 2),
-            Text(
-              metaText,
-              style: textTheme.bodySmall,
-            ),
+            Text(metaText, style: textTheme.bodySmall),
           ],
         ),
       ],
