@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'di/injection.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/app_lifecycle_tracker.dart';
+import 'core/utils/notification_helper.dart';
 import 'features/settings/bloc/identity/identity_bloc.dart';
 import 'features/settings/bloc/settings/settings_bloc.dart';
 import 'features/rooms/bloc/rooms_bloc.dart';
@@ -12,23 +14,31 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   configureDependencies();
 
-  final identityBloc = getIt<IdentityBloc>()..add(LoadIdentity());
+  // Initialize lifecycle tracker and notifications setup
+  AppLifecycleTracker.instance.init();
+  await NotificationHelper.initialize();
 
-  runApp(TermchatApp(identityBloc: identityBloc));
+  final identityBloc = getIt<IdentityBloc>()..add(LoadIdentity());
+  final settingsBloc = getIt<SettingsBloc>()..add(LoadSettings());
+
+  runApp(TermchatApp(identityBloc: identityBloc, settingsBloc: settingsBloc));
 }
 
 class TermchatApp extends StatelessWidget {
   final IdentityBloc identityBloc;
+  final SettingsBloc settingsBloc;
 
-  const TermchatApp({super.key, required this.identityBloc});
+  const TermchatApp({
+    super.key,
+    required this.identityBloc,
+    required this.settingsBloc,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<SettingsBloc>(
-          create: (_) => getIt<SettingsBloc>()..add(LoadSettings()),
-        ),
+        BlocProvider<SettingsBloc>.value(value: settingsBloc),
         BlocProvider<IdentityBloc>.value(value: identityBloc),
         BlocProvider<RoomsBloc>(
           create: (_) => getIt<RoomsBloc>()..add(LoadActiveSessions()),

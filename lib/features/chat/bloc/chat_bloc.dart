@@ -6,6 +6,12 @@ import 'package:injectable/injectable.dart';
 
 import '../../../core/models/message.dart';
 import '../../../core/models/backend_message.dart';
+import '../../../core/utils/app_lifecycle_tracker.dart';
+import '../../../core/utils/notification_helper.dart';
+import '../../../core/utils/audio_helper.dart';
+import '../../settings/bloc/identity/identity_bloc.dart';
+import '../../settings/bloc/settings/settings_bloc.dart';
+import '../../../di/injection.dart';
 import '../repositories/chat_repository.dart';
 
 part 'chat_state.dart';
@@ -171,6 +177,36 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     final updatedMessages = List<Message>.from(state.messages)
       ..add(event.message);
     emit(state.copyWith(messages: updatedMessages));
+
+    // Check for user mention
+    final identityState = getIt<IdentityBloc>().state;
+    final myNick = identityState is IdentityLoaded
+        ? identityState.user.nickname
+        : '';
+    final isMention =
+        myNick.isNotEmpty &&
+        event.message.content.contains('@$myNick') &&
+        event.message.senderNickname != myNick &&
+        !event.message.isSystemMessage;
+
+    if (isMention) {
+      final isBackground = AppLifecycleTracker.instance.isBackground;
+      final settingsState = getIt<SettingsBloc>().state;
+
+      if (isBackground) {
+        if (settingsState.messageNotificationsEnabled) {
+          NotificationHelper.showMentionNotification(
+            roomName: state.roomCode ?? '',
+            sender: event.message.senderNickname,
+            content: event.message.content,
+          );
+        }
+      } else {
+        if (settingsState.mentionSoundEnabled) {
+          AudioHelper.playMentionChime();
+        }
+      }
+    }
   }
 
   void _onUsersUpdated(_UsersUpdated event, Emitter<ChatState> emit) {

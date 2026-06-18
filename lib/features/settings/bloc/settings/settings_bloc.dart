@@ -7,7 +7,7 @@ import '../../repositories/settings_repository.dart';
 part 'settings_state.dart';
 part 'settings_event.dart';
 
-@injectable
+@lazySingleton
 class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   final SettingsRepository _repository;
 

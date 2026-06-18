@@ -24,6 +24,8 @@ dependencies:
   google_fonts: ^8.1.0
   http: ^1.6.0
   web_socket_channel: ^3.0.3
+  audioplayers: ^6.7.1
+  flutter_local_notifications: ^22.0.1
 
 dev_dependencies:
   flutter_test:
@@ -42,7 +44,7 @@ flutter:
     - assets/
 
 flutter_launcher_icons:
-  android: "launcher_icon"
+  android: true
   ios: true
   image_path: "assets/app_icon.png"
   adaptive_icon_background: "#000000"

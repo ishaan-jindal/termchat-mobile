@@ -15,13 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WebSocket connection exponential backoff reconnection logic (delays double up to 30s) in `ChatRepository`.
 - Orange status banner in the chat UI indicating when reconnection is active.
 - 10-second timeout constraints to WebSocket connections and rooms HTTP `/discover` endpoint to prevent indefinite hangs.
-- Activated message notifications and mention sound toggles in settings.
+- Fully implemented foreground mention sound chimes using a lightweight locally-generated sine-wave chime (`assets/mention_chime.wav`).
+- Fully implemented background local push notifications using `flutter_local_notifications` when mentioned while the app is backgrounded/minimized.
+- Created app lifecycle tracking observer to distinguish between foreground and background app states.
 - Centralized `ColorUtils` hex-to-color parser.
 - Centralized `RoomJoinHelper` to unify and deduplicate room connection and routing logic.
 - Dynamic `isHost` rendering on active session cards based on current user's nickname matched against active room user metadata.
 
 ### Changed
-- Refactored `IdentityBloc` to use `@lazySingleton` ensuring a single eager state instance throughout the app and eliminating race conditions when joining rooms.
+- Refactored `IdentityBloc` and `SettingsBloc` to use `@lazySingleton` ensuring eager state instances throughout the app and eliminating race conditions.
 - Cleaned up obsolete sections and improved formatting in the `README.md`.
 - Removed `isHost` attribute from the global `User` preferred identity model.
 

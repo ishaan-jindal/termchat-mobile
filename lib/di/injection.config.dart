@@ -49,7 +49,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i48.IdentityBloc(gh<_i351.IdentityRepository>()),
     );
     gh.lazySingleton<_i949.RoomRepository>(() => _i949.RoomRepositoryImpl());
-    gh.factory<_i395.SettingsBloc>(
+    gh.lazySingleton<_i395.SettingsBloc>(
       () => _i395.SettingsBloc(gh<_i732.SettingsRepository>()),
     );
     gh.factory<_i1055.RoomsBloc>(
