@@ -7,43 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-18
+
 ### Added
-- Multi-room chat architecture: users can now join, manage, and switch between multiple active rooms simultaneously.
-- Room discovery list view inside `RoomsPage` to switch active sessions.
-- Password-protected room support via a custom `PasswordPromptModal`.
-- Settings menu: customize nickname, preferred color, dark/light theme, and dynamic font scale.
-- WebSocket connection exponential backoff reconnection logic (delays double up to 30s) in `ChatRepository`.
-- Orange status banner in the chat UI indicating when reconnection is active.
-- 10-second timeout constraints to WebSocket connections and rooms HTTP `/discover` endpoint to prevent indefinite hangs.
-- Fully implemented foreground mention sound chimes using a lightweight locally-generated sine-wave chime (`assets/mention_chime.wav`).
-- Fully implemented background local push notifications using `flutter_local_notifications` when mentioned while the app is backgrounded/minimized.
-- Created app lifecycle tracking observer to distinguish between foreground and background app states.
-- Centralized `ColorUtils` hex-to-color parser.
-- Centralized `RoomJoinHelper` to unify and deduplicate room connection and routing logic.
-- Dynamic `isHost` rendering on active session cards based on current user's nickname matched against active room user metadata.
+- Real-time foreground sound chime when your username is mentioned.
+- System push notifications for mentions when the app is minimized/in the background.
+- Support for joining and switching between multiple active chat rooms simultaneously.
+- Dynamic "host" badges inside active room lists to identify which rooms you created.
+- Activated message notifications and mention sound toggles in the settings panel.
 
-### Changed
-- Refactored `IdentityBloc` and `SettingsBloc` to use `@lazySingleton` ensuring eager state instances throughout the app and eliminating race conditions.
-- Cleaned up obsolete sections and improved formatting in the `README.md`.
-- Removed `isHost` attribute from the global `User` preferred identity model.
-
-### Removed
-- Unused `JoinRoom` events and associated `passwordRequired` states from `RoomsBloc` to reduce code surface.
-- Unused/duplicated hex color parsing methods across widgets.
-- Redundant and obvious comments across codebase.
+### Fixed
+- Resolved issue in Identity Settings where the edit modals would not dismiss after saving.
+- Resolved a startup race condition where preferred nickname and color preferences were not loaded in time before entering a room.
+- Added timeouts to WebSocket room connection and discovery requests to prevent infinite loading spinners.
+- Fixed WebSocket stability issues and implemented automatic reconnection with exponential backoff.
 
 ## [1.1.0] - 2026-06-18
 
 ### Added
-- Added custom terminal-themed app icons for the mobile application.
+- New terminal-themed app icons for mobile platforms.
 
 ## [1.0.0] - 2026-06-16
 
 ### Added
-- Initial full release of Termchat app.
-- Real-time minimal anonymous chatrooms powered by WebSockets.
-- Public room discovery list.
-- Room code joining capabilities.
-- Live active users list side drawer in chat.
-- Clean minimal terminal-inspired UI design.
+- Initial release of Termchat.
+- Real-time minimal anonymous chatrooms with password protection.
+- Live public room discovery page.
+- Code-based room joining.
+- Active users list sidebar drawer in rooms.
+- Clean terminal-inspired UI with light/dark mode and customizable text sizes.
 - MIT License file.
