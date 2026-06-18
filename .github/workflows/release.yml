@@ -60,6 +60,36 @@ jobs:
           VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Extract changelog entry
+        id: changelog_reader
+        run: |
+          VERSION="${{ steps.app_version.outputs.version }}"
+          python3 -c "
+          import re, sys
+          version = sys.argv[1]
+          try:
+              with open('CHANGELOG.md', 'r') as f:
+                  content = f.read()
+              pattern = rf'(##\s*\[{re.escape(version)}\].*?)(?=\n##\s*\[|\Z)'
+              match = re.search(pattern, content, re.DOTALL)
+              if match:
+                  section = match.group(1).strip()
+                  lines = section.split('\n')
+                  if lines[0].startswith('## '):
+                      section = '\n'.join(lines[1:]).strip()
+                  with open('release_notes.md', 'w') as out:
+                      out.write(section)
+                  print('Extracted changelog successfully.')
+              else:
+                  print('Could not find version in changelog.')
+                  with open('release_notes.md', 'w') as out:
+                      out.write('Release ' + version)
+          except Exception as e:
+              print('Error reading changelog:', e)
+              with open('release_notes.md', 'w') as out:
+                  out.write('Release ' + version)
+          " "$VERSION"
+
       - name: Rename release files
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/Termchat-${{ steps.app_version.outputs.version }}.apk
@@ -76,6 +106,7 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: release_notes.md
           files: |
             build/app/outputs/flutter-apk/Termchat-${{ steps.app_version.outputs.version }}.apk
             build/app/outputs/bundle/release/Termchat-${{ steps.app_version.outputs.version }}.aab
