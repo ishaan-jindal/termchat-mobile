@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/widgets/password_prompt_modal.dart';
+import '../../../core/utils/room_join_helper.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
 import '../../chat/bloc/chat_bloc.dart';
 import '../../chat/managers/active_chats_manager.dart';
@@ -13,48 +12,6 @@ import '../widgets/join_another_room_form.dart';
 
 class RoomsPage extends StatelessWidget {
   const RoomsPage({super.key});
-
-  void _handleJoinRoom(BuildContext context, String roomCode, bool isLocked) {
-    final identityState = context.read<IdentityBloc>().state;
-    String nick = 'anonymous';
-    String colorHex = '';
-    if (identityState is IdentityLoaded) {
-      nick = identityState.user.nickname;
-      colorHex = identityState.user.colorHex;
-    }
-
-    final chatBloc = getIt<ActiveChatsManager>().getOrCreate(roomCode);
-    final isConnected = chatBloc.state.isConnected || chatBloc.state.isLoading;
-
-    if (isLocked && !isConnected) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (bottomSheetContext) => PasswordPromptModal(
-          roomCode: roomCode,
-          onJoin: (password, nick, colorHex) {
-            chatBloc.add(
-              ConnectChat(
-                roomCode: roomCode,
-                nick: nick,
-                colorHex: colorHex,
-                password: password,
-              ),
-            );
-            context.go('/chat/$roomCode');
-          },
-        ),
-      );
-    } else {
-      if (!isConnected) {
-        chatBloc.add(
-          ConnectChat(roomCode: roomCode, nick: nick, colorHex: colorHex),
-        );
-      }
-      context.go('/chat/$roomCode');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,16 +68,28 @@ class RoomsPage extends StatelessWidget {
                                 ? chatState.messages.last.content
                                 : 'No messages yet';
 
+                            final identityState = context
+                                .read<IdentityBloc>()
+                                .state;
+                            final myNick = identityState is IdentityLoaded
+                                ? identityState.user.nickname
+                                : '';
+                            final isMeHost = chatState.users.any(
+                              (u) => u.nick == myNick && u.isHost,
+                            );
+
                             return ActiveSessionCard(
                               roomName: roomId,
                               usersCount: chatState.users.length,
-                              unreadCount:
-                                  0, // Could implement unread count logic in state if needed
-                              isHost: false, // Could derive from state
-                              isViewing: false, // Could check current route
+                              unreadCount: 0,
+                              isHost: isMeHost,
+                              isViewing: false,
                               lastMessageText: lastMsg,
-                              onTap: () =>
-                                  _handleJoinRoom(context, roomId, false),
+                              onTap: () => RoomJoinHelper.joinRoom(
+                                context,
+                                roomId,
+                                false,
+                              ),
                             );
                           },
                         );
@@ -131,7 +100,7 @@ class RoomsPage extends StatelessWidget {
                 const SizedBox(height: AppConstants.spacing48),
                 JoinAnotherRoomForm(
                   onJoin: (roomCode) {
-                    _handleJoinRoom(context, roomCode, false);
+                    RoomJoinHelper.joinRoom(context, roomCode, false);
                   },
                 ),
                 const SizedBox(height: AppConstants.spacing48),

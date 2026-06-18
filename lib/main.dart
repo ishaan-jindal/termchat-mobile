@@ -11,11 +11,16 @@ import 'features/rooms/bloc/rooms_bloc.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   configureDependencies();
-  runApp(const TermchatApp());
+
+  final identityBloc = getIt<IdentityBloc>()..add(LoadIdentity());
+
+  runApp(TermchatApp(identityBloc: identityBloc));
 }
 
 class TermchatApp extends StatelessWidget {
-  const TermchatApp({super.key});
+  final IdentityBloc identityBloc;
+
+  const TermchatApp({super.key, required this.identityBloc});
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +29,7 @@ class TermchatApp extends StatelessWidget {
         BlocProvider<SettingsBloc>(
           create: (_) => getIt<SettingsBloc>()..add(LoadSettings()),
         ),
-        BlocProvider<IdentityBloc>(
-          create: (_) => getIt<IdentityBloc>()..add(LoadIdentity()),
-        ),
+        BlocProvider<IdentityBloc>.value(value: identityBloc),
         BlocProvider<RoomsBloc>(
           create: (_) => getIt<RoomsBloc>()..add(LoadActiveSessions()),
         ),

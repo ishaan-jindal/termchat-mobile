@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/models/backend_message.dart';
 import '../../../core/models/room.dart';
 
@@ -16,9 +17,9 @@ class RoomRepositoryImpl implements RoomRepository {
   @override
   Future<List<Room>> getActiveSessions() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://termchat.sacred99.online/discover'),
-      );
+      final response = await http
+          .get(Uri.parse('${AppConstants.apiBaseUrl}/discover'))
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = jsonDecode(response.body);
@@ -29,8 +30,7 @@ class RoomRepositoryImpl implements RoomRepository {
           );
           return Room(
             id: backendRoom.id,
-            name: backendRoom
-                .id, // Using ID as name since backend doesn't differentiate
+            name: backendRoom.id,
             usersCount: backendRoom.userCount,
             isLocked: backendRoom.hasPassword,
           );
@@ -47,14 +47,9 @@ class RoomRepositoryImpl implements RoomRepository {
 
   @override
   Future<Room> joinRoom(String roomCode, {String? password}) async {
-    // Joining is now handled by ChatRepository via WebSocket.
-    // RoomsBloc will just return a mocked Room object so it appears in the active sessions list.
-    // The actual authentication failure will be caught by ChatRepository throwing an error.
     return Room(id: roomCode, name: roomCode);
   }
 
   @override
-  Future<void> leaveRoom(String roomId) async {
-    // Handled locally or by closing WebSocket via ChatRepository
-  }
+  Future<void> leaveRoom(String roomId) async {}
 }

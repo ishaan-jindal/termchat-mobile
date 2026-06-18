@@ -8,7 +8,7 @@ import '../../repositories/identity_repository.dart';
 part 'identity_state.dart';
 part 'identity_event.dart';
 
-@injectable
+@lazySingleton
 class IdentityBloc extends Bloc<IdentityEvent, IdentityState> {
   final IdentityRepository _repository;
 
@@ -45,7 +45,6 @@ class IdentityBloc extends Bloc<IdentityEvent, IdentityState> {
               id: currentUser.id,
               nickname: event.nickname,
               colorHex: currentUser.colorHex,
-              isHost: currentUser.isHost,
             ),
           ),
         );
@@ -69,7 +68,6 @@ class IdentityBloc extends Bloc<IdentityEvent, IdentityState> {
               id: currentUser.id,
               nickname: currentUser.nickname,
               colorHex: event.colorHex,
-              isHost: currentUser.isHost,
             ),
           ),
         );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/color_utils.dart';
 import '../bloc/identity/identity_bloc.dart';
 import '../../chat/bloc/chat_bloc.dart' as chat_bloc;
 import 'settings_section_header.dart';
@@ -65,10 +66,13 @@ class IdentitySettings extends StatelessWidget {
                             context.read<IdentityBloc>().add(
                               UpdateNickname(controller.text.trim()),
                             );
-                            // Also send to ChatBloc if connected
-                            context.read<chat_bloc.ChatBloc>().add(
-                              chat_bloc.UpdateNickname(controller.text.trim()),
-                            );
+                            try {
+                              context.read<chat_bloc.ChatBloc>().add(
+                                chat_bloc.UpdateNickname(
+                                  controller.text.trim(),
+                                ),
+                              );
+                            } catch (_) {}
                           }
                           Navigator.pop(bottomSheetContext);
                         },
@@ -145,10 +149,11 @@ class IdentitySettings extends StatelessWidget {
                             context.read<IdentityBloc>().add(
                               UpdateColor(controller.text.trim()),
                             );
-                            // Also send to ChatBloc if connected
-                            context.read<chat_bloc.ChatBloc>().add(
-                              chat_bloc.UpdateColor(controller.text.trim()),
-                            );
+                            try {
+                              context.read<chat_bloc.ChatBloc>().add(
+                                chat_bloc.UpdateColor(controller.text.trim()),
+                              );
+                            } catch (_) {}
                           }
                           Navigator.pop(bottomSheetContext);
                         },
@@ -167,14 +172,6 @@ class IdentitySettings extends StatelessWidget {
         );
       },
     );
-  }
-
-  Color _parseColor(String hex) {
-    hex = hex.replaceAll('#', '');
-    if (hex.length == 6) {
-      hex = 'FF$hex';
-    }
-    return Color(int.tryParse(hex, radix: 16) ?? 0xFFFFFFFF);
   }
 
   @override
@@ -243,7 +240,7 @@ class IdentitySettings extends StatelessWidget {
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: _parseColor(colorHex),
+                              color: ColorUtils.parseHexColor(colorHex),
                               shape: BoxShape.circle,
                             ),
                           ),

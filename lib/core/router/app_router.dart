@@ -27,7 +27,6 @@ class AppRouter {
         branches: [
           StatefulShellBranch(
             routes: [
-              // Chat / Home Tab (Index 0)
               GoRoute(
                 path: '/',
                 builder: (context, state) => const HomePage(),
@@ -51,7 +50,6 @@ class AppRouter {
           ),
           StatefulShellBranch(
             routes: [
-              // Rooms Tab (Index 1)
               GoRoute(
                 path: '/rooms',
                 builder: (context, state) => const RoomsPage(),
@@ -60,7 +58,6 @@ class AppRouter {
           ),
           StatefulShellBranch(
             routes: [
-              // Settings Tab (Index 2)
               GoRoute(
                 path: '/settings',
                 builder: (context, state) => const SettingsPage(),

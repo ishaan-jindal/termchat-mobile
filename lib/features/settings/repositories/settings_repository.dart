@@ -3,10 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 abstract class SettingsRepository {
   Future<String> getThemeMode();
-  Future<void> setThemeMode(String mode); // dark, light, system
+  Future<void> setThemeMode(String mode);
 
   Future<String> getFontSize();
-  Future<void> setFontSize(String size); // sm, md, lg
+  Future<void> setFontSize(String size);
 
   Future<bool> getMessageNotifications();
   Future<void> setMessageNotifications(bool enabled);

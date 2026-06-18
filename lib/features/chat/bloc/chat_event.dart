@@ -76,3 +76,10 @@ class _ChatError extends ChatEvent {
 }
 
 class DisconnectChat extends ChatEvent {}
+
+class _ConnectionStatusChanged extends ChatEvent {
+  final ConnectionStatus status;
+  const _ConnectionStatusChanged(this.status);
+  @override
+  List<Object?> get props => [status];
+}

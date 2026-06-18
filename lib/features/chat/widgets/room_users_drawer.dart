@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/color_utils.dart';
 import '../bloc/chat_bloc.dart';
 import '../managers/active_chats_manager.dart';
 import '../../../di/injection.dart';
@@ -11,14 +12,6 @@ class RoomUsersDrawer extends StatelessWidget {
   final String roomName;
 
   const RoomUsersDrawer({super.key, required this.roomName});
-
-  Color _parseColor(String hex) {
-    hex = hex.replaceAll('#', '');
-    if (hex.length == 6) {
-      hex = 'FF$hex';
-    }
-    return Color(int.tryParse(hex, radix: 16) ?? 0xFFFFFFFF);
-  }
 
   String _formatJoinTime(int timestampSecs) {
     if (timestampSecs == 0) return 'recently';
@@ -83,7 +76,7 @@ class RoomUsersDrawer extends StatelessWidget {
                     child: _buildUserRow(
                       context: context,
                       username: user.nick,
-                      color: _parseColor(user.color),
+                      color: ColorUtils.parseHexColor(user.color),
                       isHost: user.isHost,
                       isTyping: user.typing,
                       metaText: '· joined ${_formatJoinTime(user.joinedAt)}',

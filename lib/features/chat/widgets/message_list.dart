@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_constants.dart';
 import '../bloc/chat_bloc.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
+import '../../../core/utils/color_utils.dart';
 import 'chat_message_bubble.dart';
 
 class MessageList extends StatefulWidget {
@@ -30,14 +31,6 @@ class _MessageListState extends State<MessageList> {
         curve: Curves.easeOut,
       );
     }
-  }
-
-  Color _parseColor(String hex) {
-    hex = hex.replaceAll('#', '');
-    if (hex.length == 6) {
-      hex = 'FF$hex';
-    }
-    return Color(int.tryParse(hex, radix: 16) ?? 0xFFFFFFFF);
   }
 
   @override
@@ -84,7 +77,7 @@ class _MessageListState extends State<MessageList> {
 
             return ChatMessageBubble(
               username: msg.senderNickname,
-              usernameColor: _parseColor(msg.senderColorHex),
+              usernameColor: ColorUtils.parseHexColor(msg.senderColorHex),
               message: msg.content,
               isMention: isMention,
             );

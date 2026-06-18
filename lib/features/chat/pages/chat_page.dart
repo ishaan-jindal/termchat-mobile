@@ -6,6 +6,7 @@ import '../widgets/message_list.dart';
 import '../widgets/chat_input_area.dart';
 import '../widgets/room_users_drawer.dart';
 import '../bloc/chat_bloc.dart';
+import '../repositories/chat_repository.dart';
 import '../../settings/bloc/identity/identity_bloc.dart' as id_bloc;
 import 'package:go_router/go_router.dart';
 import '../managers/active_chats_manager.dart';
@@ -73,7 +74,18 @@ class ChatPage extends StatelessWidget {
           body: Column(
             children: [
               if (state.isLoading) const LinearProgressIndicator(),
-              if (!state.isConnected && !state.isLoading)
+              if (state.connectionStatus == ConnectionStatus.reconnecting)
+                Container(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  padding: const EdgeInsets.all(8.0),
+                  child: const Center(
+                    child: Text(
+                      'Reconnecting...',
+                      style: TextStyle(color: Colors.orange),
+                    ),
+                  ),
+                )
+              else if (!state.isConnected && !state.isLoading)
                 Container(
                   color: Colors.red.withValues(alpha: 0.1),
                   padding: const EdgeInsets.all(8.0),

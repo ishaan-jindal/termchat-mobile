@@ -7,6 +7,7 @@ class ChatState extends Equatable {
   final bool isConnected;
   final String? error;
   final String? roomCode;
+  final ConnectionStatus connectionStatus;
 
   const ChatState({
     this.messages = const [],
@@ -15,6 +16,7 @@ class ChatState extends Equatable {
     this.isConnected = false,
     this.error,
     this.roomCode,
+    this.connectionStatus = ConnectionStatus.disconnected,
   });
 
   ChatState copyWith({
@@ -25,6 +27,7 @@ class ChatState extends Equatable {
     String? error,
     bool clearError = false,
     String? roomCode,
+    ConnectionStatus? connectionStatus,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -33,6 +36,7 @@ class ChatState extends Equatable {
       isConnected: isConnected ?? this.isConnected,
       error: clearError ? null : (error ?? this.error),
       roomCode: roomCode ?? this.roomCode,
+      connectionStatus: connectionStatus ?? this.connectionStatus,
     );
   }
 
@@ -44,5 +48,6 @@ class ChatState extends Equatable {
     isConnected,
     error,
     roomCode,
+    connectionStatus,
   ];
 }

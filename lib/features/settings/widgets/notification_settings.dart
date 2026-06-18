@@ -20,15 +20,19 @@ class NotificationSettings extends StatelessWidget {
               context,
               'message notifications',
               state.messageNotificationsEnabled,
-              null,
-              subtitle: 'To be implemented soon',
+              (enabled) {
+                context.read<SettingsBloc>().add(
+                  ToggleMessageNotifications(enabled),
+                );
+              },
             ),
             _buildSwitchRow(
               context,
               'mention sound',
               state.mentionSoundEnabled,
-              null,
-              subtitle: 'To be implemented soon',
+              (enabled) {
+                context.read<SettingsBloc>().add(ToggleMentionSound(enabled));
+              },
             ),
           ],
         );

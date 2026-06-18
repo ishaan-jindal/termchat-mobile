@@ -6,6 +6,11 @@ class AppConstants {
   static const String appVersion = '1.1.0';
   static const String appDescription = 'minimal anonymous chatrooms';
 
+  // --- API ---
+  static const String apiHost = 'termchat.sacred99.online';
+  static const String apiBaseUrl = 'https://$apiHost';
+  static const String wsBaseUrl = 'wss://$apiHost/ws';
+
   // ── Spacing ──
   static const double spacing4 = 4;
   static const double spacing6 = 6;

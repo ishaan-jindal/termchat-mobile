@@ -16,6 +16,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final ChatRepository _repository;
   StreamSubscription<Message>? _messageSubscription;
   StreamSubscription<List<BackendUserInfo>>? _usersSubscription;
+  StreamSubscription<ConnectionStatus>? _connectionStatusSubscription;
 
   ChatBloc(this._repository) : super(const ChatState()) {
     on<ConnectChat>(_onConnectChat);
@@ -28,6 +29,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<_UsersUpdated>(_onUsersUpdated);
     on<_ChatError>(_onChatError);
     on<DisconnectChat>(_onDisconnectChat);
+    on<_ConnectionStatusChanged>(_onConnectionStatusChanged);
   }
 
   Future<void> _onConnectChat(
@@ -36,17 +38,20 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
+      await _connectionStatusSubscription?.cancel();
+      _connectionStatusSubscription = _repository.connectionStatus.listen(
+        (status) => add(_ConnectionStatusChanged(status)),
+      );
+
       await _repository.connect(
         event.roomCode,
         event.nick,
         password: event.password,
       );
 
-      // Cancel previous subscriptions if any
       await _messageSubscription?.cancel();
       await _usersSubscription?.cancel();
 
-      // Listen to streams
       _messageSubscription = _repository.messages.listen(
         (message) => add(_MessageReceived(message)),
         onError: (error) => add(_ChatError(error.toString())),
@@ -182,17 +187,59 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) async {
     await _messageSubscription?.cancel();
     await _usersSubscription?.cancel();
+    await _connectionStatusSubscription?.cancel();
     _messageSubscription = null;
     _usersSubscription = null;
+    _connectionStatusSubscription = null;
     await _repository.disconnect();
-    emit(const ChatState()); // Reset state
+    emit(const ChatState());
+  }
+
+  void _onConnectionStatusChanged(
+    _ConnectionStatusChanged event,
+    Emitter<ChatState> emit,
+  ) {
+    switch (event.status) {
+      case ConnectionStatus.disconnected:
+        emit(
+          state.copyWith(
+            isConnected: false,
+            isLoading: false,
+            connectionStatus: event.status,
+          ),
+        );
+        break;
+      case ConnectionStatus.connecting:
+        emit(state.copyWith(isLoading: true, connectionStatus: event.status));
+        break;
+      case ConnectionStatus.connected:
+        emit(
+          state.copyWith(
+            isConnected: true,
+            isLoading: false,
+            clearError: true,
+            connectionStatus: event.status,
+          ),
+        );
+        break;
+      case ConnectionStatus.reconnecting:
+        emit(
+          state.copyWith(
+            isConnected: false,
+            isLoading: false,
+            connectionStatus: event.status,
+          ),
+        );
+        break;
+    }
   }
 
   @override
   Future<void> close() {
     _messageSubscription?.cancel();
     _usersSubscription?.cancel();
-    _repository.disconnect();
+    _connectionStatusSubscription?.cancel();
+    _repository.dispose();
     return super.close();
   }
 }

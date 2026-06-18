@@ -45,7 +45,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i732.SettingsRepositoryImpl(),
     );
     gh.factory<_i811.ChatRepository>(() => _i811.ChatRepositoryImpl());
-    gh.factory<_i48.IdentityBloc>(
+    gh.lazySingleton<_i48.IdentityBloc>(
       () => _i48.IdentityBloc(gh<_i351.IdentityRepository>()),
     );
     gh.lazySingleton<_i949.RoomRepository>(() => _i949.RoomRepositoryImpl());

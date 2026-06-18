@@ -1,62 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 import '../widgets/home_header.dart';
 import '../widgets/room_action_card.dart';
 import '../widgets/room_card.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../../core/widgets/password_prompt_modal.dart';
-import '../../settings/bloc/identity/identity_bloc.dart';
-import '../../chat/bloc/chat_bloc.dart';
-import '../../chat/managers/active_chats_manager.dart';
-import '../../../di/injection.dart';
 import '../../rooms/bloc/rooms_bloc.dart';
+import '../../../core/utils/room_join_helper.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
-
-  void _handleJoinRoom(BuildContext context, String roomCode, bool isLocked) {
-    final identityState = context.read<IdentityBloc>().state;
-    String nick = 'anonymous';
-    String colorHex = '';
-    if (identityState is IdentityLoaded) {
-      nick = identityState.user.nickname;
-      colorHex = identityState.user.colorHex;
-    }
-
-    final chatBloc = getIt<ActiveChatsManager>().getOrCreate(roomCode);
-    final isConnected = chatBloc.state.isConnected || chatBloc.state.isLoading;
-
-    if (isLocked && !isConnected) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (bottomSheetContext) => PasswordPromptModal(
-          roomCode: roomCode,
-          onJoin: (password, nick, colorHex) {
-            chatBloc.add(
-              ConnectChat(
-                roomCode: roomCode,
-                nick: nick,
-                colorHex: colorHex,
-                password: password,
-              ),
-            );
-            context.go('/chat/$roomCode');
-          },
-        ),
-      );
-    } else {
-      if (!isConnected) {
-        chatBloc.add(
-          ConnectChat(roomCode: roomCode, nick: nick, colorHex: colorHex),
-        );
-      }
-      context.go('/chat/$roomCode');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +36,6 @@ class HomePage extends StatelessWidget {
                   const RoomActionCard(),
                   const SizedBox(height: AppConstants.spacing48),
 
-                  // Rooms Online Now Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -98,7 +50,6 @@ class HomePage extends StatelessWidget {
                   ),
                   const SizedBox(height: AppConstants.spacing16),
 
-                  // Room List
                   BlocBuilder<RoomsBloc, RoomsState>(
                     builder: (context, state) {
                       if (state.isLoading && state.activeSessions.isEmpty) {
@@ -125,7 +76,7 @@ class HomePage extends StatelessWidget {
                               bottom: AppConstants.spacing16,
                             ),
                             child: GestureDetector(
-                              onTap: () => _handleJoinRoom(
+                              onTap: () => RoomJoinHelper.joinRoom(
                                 context,
                                 room.id,
                                 room.isLocked,
@@ -134,7 +85,7 @@ class HomePage extends StatelessWidget {
                                 name: room.name,
                                 users: room.usersCount,
                                 isLocked: room.isLocked,
-                                onJoin: () => _handleJoinRoom(
+                                onJoin: () => RoomJoinHelper.joinRoom(
                                   context,
                                   room.name,
                                   room.isLocked,
