@@ -3,13 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/models/backend_message.dart';
+import '../../../data/models/backend_room_info.dart';
 import '../../../core/models/room.dart';
 
 abstract class RoomRepository {
   Future<List<Room>> getActiveSessions();
-  Future<Room> joinRoom(String roomCode, {String? password});
-  Future<void> leaveRoom(String roomId);
 }
 
 @LazySingleton(as: RoomRepository)
@@ -44,12 +42,4 @@ class RoomRepositoryImpl implements RoomRepository {
       throw Exception('Network error while discovering rooms: $e');
     }
   }
-
-  @override
-  Future<Room> joinRoom(String roomCode, {String? password}) async {
-    return Room(id: roomCode, name: roomCode);
-  }
-
-  @override
-  Future<void> leaveRoom(String roomId) async {}
 }

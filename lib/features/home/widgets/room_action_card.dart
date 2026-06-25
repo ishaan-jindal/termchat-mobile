@@ -8,7 +8,6 @@ import '../../../core/constants/app_constants.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
 import '../../chat/bloc/chat_bloc.dart';
 import '../../chat/managers/active_chats_manager.dart';
-import '../../../di/injection.dart';
 
 class RoomActionCard extends StatefulWidget {
   const RoomActionCard({super.key});
@@ -39,7 +38,7 @@ class _RoomActionCardState extends State<RoomActionCard> {
   void _handleJoin() {
     final roomCode = _controller.text.trim();
     if (roomCode.isNotEmpty) {
-      final chatBloc = getIt<ActiveChatsManager>().getOrCreate(roomCode);
+      final chatBloc = context.read<ActiveChatsManager>().getOrCreate(roomCode);
       if (!chatBloc.state.isConnected && !chatBloc.state.isLoading) {
         chatBloc.add(
           ConnectChat(
@@ -63,7 +62,7 @@ class _RoomActionCardState extends State<RoomActionCard> {
       ),
     );
 
-    final chatBloc = getIt<ActiveChatsManager>().getOrCreate(newCode);
+    final chatBloc = context.read<ActiveChatsManager>().getOrCreate(newCode);
     if (!chatBloc.state.isConnected && !chatBloc.state.isLoading) {
       chatBloc.add(
         ConnectChat(roomCode: newCode, nick: _getNick(), colorHex: _getColor()),

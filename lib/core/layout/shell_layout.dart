@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_constants.dart';
-import '../../../core/theme/app_colors.dart';
+import '../constants/app_constants.dart';
+import '../theme/app_colors.dart';
 
-class MainLayout extends StatelessWidget {
+class ShellLayout extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
-  const MainLayout({super.key, required this.navigationShell});
+  const ShellLayout({super.key, required this.navigationShell});
 
   void _goBranch(int index) {
     navigationShell.goBranch(

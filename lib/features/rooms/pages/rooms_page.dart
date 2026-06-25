@@ -6,7 +6,6 @@ import '../../../core/utils/room_join_helper.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
 import '../../chat/bloc/chat_bloc.dart';
 import '../../chat/managers/active_chats_manager.dart';
-import '../../../di/injection.dart';
 import '../widgets/active_session_card.dart';
 import '../widgets/join_another_room_form.dart';
 
@@ -17,6 +16,7 @@ class RoomsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final activeChatsManager = context.read<ActiveChatsManager>();
 
     return Scaffold(
       body: SafeArea(
@@ -39,8 +39,7 @@ class RoomsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: AppConstants.spacing16),
                 ValueListenableBuilder<List<String>>(
-                  valueListenable:
-                      getIt<ActiveChatsManager>().activeRoomsListenable,
+                  valueListenable: activeChatsManager.activeRoomsListenable,
                   builder: (context, activeRooms, child) {
                     if (activeRooms.isEmpty) {
                       return Center(
@@ -56,9 +55,7 @@ class RoomsPage extends StatelessWidget {
 
                     return Column(
                       children: activeRooms.map((roomId) {
-                        final chatBloc = getIt<ActiveChatsManager>().get(
-                          roomId,
-                        );
+                        final chatBloc = activeChatsManager.get(roomId);
                         if (chatBloc == null) return const SizedBox.shrink();
 
                         return BlocBuilder<ChatBloc, ChatState>(

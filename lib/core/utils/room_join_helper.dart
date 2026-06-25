@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../di/injection.dart';
 import '../../features/chat/bloc/chat_bloc.dart';
 import '../../features/chat/managers/active_chats_manager.dart';
 import '../../features/settings/bloc/identity/identity_bloc.dart';
@@ -20,7 +19,7 @@ class RoomJoinHelper {
       colorHex = identityState.user.colorHex;
     }
 
-    final chatBloc = getIt<ActiveChatsManager>().getOrCreate(roomCode);
+    final chatBloc = context.read<ActiveChatsManager>().getOrCreate(roomCode);
     final isConnected = chatBloc.state.isConnected || chatBloc.state.isLoading;
 
     if (isLocked && !isConnected) {
