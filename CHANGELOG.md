@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Extracted network DTOs from `core/models/` into `data/models/` split by type.
+- Moved the app shell from `features/main/` to `core/layout/` and renamed `MainLayout` → `ShellLayout`.
+
+### Fixed
+- Chat page now navigates back on connection failure instead of showing a stuck broken page.
+- `/nick` and `/color` commands now persist locally before sending over the wire.
+
+### Removed
+- Removed unused `theme_cubit.dart` and stub `joinRoom`/`leaveRoom` repository methods.
+- Removed direct `getIt()` calls from widgets (replaced with `context.read()` via `RepositoryProvider`).
+- Removed redundant `/nick`/`/color` handling from `chat_page.dart` (handled in `ChatBloc`).
+- Injected `IdentityBloc` and `SettingsBloc` into `ChatBloc` constructor instead of `getIt()` lookups.
+
 ## [1.2.1] - 2026-06-18
 
 ### Fixed
