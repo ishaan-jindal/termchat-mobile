@@ -7,10 +7,8 @@ import '../widgets/chat_input_area.dart';
 import '../widgets/room_users_drawer.dart';
 import '../bloc/chat_bloc.dart';
 import '../repositories/chat_repository.dart';
-import '../../settings/bloc/identity/identity_bloc.dart' as id_bloc;
 import 'package:go_router/go_router.dart';
 import '../managers/active_chats_manager.dart';
-import '../../../di/injection.dart';
 import '../../../core/widgets/password_prompt_modal.dart';
 
 class ChatPage extends StatelessWidget {
@@ -59,6 +57,9 @@ class ChatPage extends StatelessWidget {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Error: ${state.error}')));
+          if (!state.isConnected) {
+            context.go('/');
+          }
         }
       },
       builder: (context, state) {
@@ -100,25 +101,11 @@ class ChatPage extends StatelessWidget {
               ChatInputArea(
                 onSend: (text) {
                   final trimmed = text.trim();
-                  if (trimmed.startsWith('/nick ')) {
-                    final parts = trimmed.split(' ');
-                    if (parts.length > 1) {
-                      context.read<id_bloc.IdentityBloc>().add(
-                        id_bloc.UpdateNickname(parts.sublist(1).join(' ')),
-                      );
-                    }
-                  } else if (trimmed.startsWith('/color ')) {
-                    final parts = trimmed.split(' ');
-                    if (parts.length > 1) {
-                      context.read<id_bloc.IdentityBloc>().add(
-                        id_bloc.UpdateColor(parts[1]),
-                      );
-                    }
-                  } else if (trimmed == '/quit') {
+                  if (trimmed == '/quit') {
                     final roomCode =
                         context.read<ChatBloc>().state.roomCode ?? '';
                     if (roomCode.isNotEmpty) {
-                      getIt<ActiveChatsManager>().remove(roomCode);
+                      context.read<ActiveChatsManager>().remove(roomCode);
                     }
                     context.go('/');
                     return;

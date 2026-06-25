@@ -14,7 +14,6 @@ class RoomsBloc extends Bloc<RoomsEvent, RoomsState> {
 
   RoomsBloc(this._repository) : super(const RoomsState()) {
     on<LoadActiveSessions>(_onLoadActiveSessions);
-    on<LeaveRoom>(_onLeaveRoom);
   }
 
   Future<void> _onLoadActiveSessions(
@@ -27,18 +26,6 @@ class RoomsBloc extends Bloc<RoomsEvent, RoomsState> {
       emit(state.copyWith(activeSessions: sessions, isLoading: false));
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
-    }
-  }
-
-  Future<void> _onLeaveRoom(LeaveRoom event, Emitter<RoomsState> emit) async {
-    try {
-      await _repository.leaveRoom(event.roomId);
-      final updatedSessions = state.activeSessions
-          .where((r) => r.id != event.roomId)
-          .toList();
-      emit(state.copyWith(activeSessions: updatedSessions));
-    } catch (e) {
-      emit(state.copyWith(error: e.toString()));
     }
   }
 }

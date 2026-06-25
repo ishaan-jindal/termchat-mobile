@@ -6,7 +6,6 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/color_utils.dart';
 import '../bloc/chat_bloc.dart';
 import '../managers/active_chats_manager.dart';
-import '../../../di/injection.dart';
 
 class RoomUsersDrawer extends StatelessWidget {
   final String roomName;
@@ -89,7 +88,7 @@ class RoomUsersDrawer extends StatelessWidget {
                     final roomCode =
                         context.read<ChatBloc>().state.roomCode ?? '';
                     if (roomCode.isNotEmpty) {
-                      getIt<ActiveChatsManager>().remove(roomCode);
+                      context.read<ActiveChatsManager>().remove(roomCode);
                     }
                     Navigator.pop(context); // close bottom sheet
                     context.go('/'); // Go back to home

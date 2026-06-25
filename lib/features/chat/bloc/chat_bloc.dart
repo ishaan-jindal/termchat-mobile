@@ -5,13 +5,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../../core/models/message.dart';
-import '../../../core/models/backend_message.dart';
+import '../../../data/models/backend_user_info.dart';
 import '../../../core/utils/app_lifecycle_tracker.dart';
 import '../../../core/utils/notification_helper.dart';
 import '../../../core/utils/audio_helper.dart';
-import '../../settings/bloc/identity/identity_bloc.dart';
+import '../../settings/bloc/identity/identity_bloc.dart' as identity;
 import '../../settings/bloc/settings/settings_bloc.dart';
-import '../../../di/injection.dart';
 import '../repositories/chat_repository.dart';
 
 part 'chat_state.dart';
@@ -20,11 +19,14 @@ part 'chat_event.dart';
 @injectable
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final ChatRepository _repository;
+  final identity.IdentityBloc _identityBloc;
+  final SettingsBloc _settingsBloc;
   StreamSubscription<Message>? _messageSubscription;
   StreamSubscription<List<BackendUserInfo>>? _usersSubscription;
   StreamSubscription<ConnectionStatus>? _connectionStatusSubscription;
 
-  ChatBloc(this._repository) : super(const ChatState()) {
+  ChatBloc(this._repository, this._identityBloc, this._settingsBloc)
+    : super(const ChatState()) {
     on<ConnectChat>(_onConnectChat);
     on<SendMessage>(_onSendMessage);
     on<UpdateNickname>(_onUpdateNickname);
@@ -138,6 +140,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) async {
     try {
       await _repository.updateNickname(event.nickname);
+      _identityBloc.add(identity.UpdateNickname(event.nickname));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }
@@ -149,6 +152,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) async {
     try {
       await _repository.updateColor(event.colorHex);
+      _identityBloc.add(identity.UpdateColor(event.colorHex));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }
@@ -179,8 +183,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(state.copyWith(messages: updatedMessages));
 
     // Check for user mention
-    final identityState = getIt<IdentityBloc>().state;
-    final myNick = identityState is IdentityLoaded
+    final identityState = _identityBloc.state;
+    final myNick = identityState is identity.IdentityLoaded
         ? identityState.user.nickname
         : '';
     final isMention =
@@ -191,7 +195,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
     if (isMention) {
       final isBackground = AppLifecycleTracker.instance.isBackground;
-      final settingsState = getIt<SettingsBloc>().state;
+      final settingsState = _settingsBloc.state;
 
       if (isBackground) {
         if (settingsState.messageNotificationsEnabled) {

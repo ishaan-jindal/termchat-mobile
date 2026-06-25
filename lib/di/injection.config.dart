@@ -56,7 +56,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1055.RoomsBloc(gh<_i949.RoomRepository>()),
     );
     gh.factory<_i213.ChatBloc>(
-      () => _i213.ChatBloc(gh<_i811.ChatRepository>()),
+      () => _i213.ChatBloc(
+        gh<_i811.ChatRepository>(),
+        gh<_i48.IdentityBloc>(),
+        gh<_i395.SettingsBloc>(),
+      ),
     );
     return this;
   }

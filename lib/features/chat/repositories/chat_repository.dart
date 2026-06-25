@@ -5,7 +5,8 @@ import 'package:injectable/injectable.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/models/backend_message.dart';
+import '../../../data/models/backend_message.dart';
+import '../../../data/models/backend_user_info.dart';
 import '../../../core/models/message.dart';
 
 enum ConnectionStatus { disconnected, connecting, connected, reconnecting }
