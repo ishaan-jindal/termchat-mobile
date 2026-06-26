@@ -9,6 +9,7 @@ import '../bloc/chat_bloc.dart';
 import '../repositories/chat_repository.dart';
 import 'package:go_router/go_router.dart';
 import '../managers/active_chats_manager.dart';
+import '../../settings/bloc/identity/identity_bloc.dart' as identity;
 import '../../../core/widgets/password_prompt_modal.dart';
 
 class ChatPage extends StatelessWidget {
@@ -32,27 +33,33 @@ class ChatPage extends StatelessWidget {
     return BlocConsumer<ChatBloc, ChatState>(
       listenWhen: (previous, current) =>
           previous.error != current.error && current.error != null,
-      listener: (context, state) {
+      listener: (context, state) async {
         if (state.error == 'invalid_password') {
-          showModalBottomSheet(
+          final password = await showModalBottomSheet<String>(
             context: context,
             isScrollControlled: true,
-            isDismissible: false, // Force them to enter password or leave
+            isDismissible: false,
             backgroundColor: Colors.transparent,
-            builder: (bottomSheetContext) => PasswordPromptModal(
-              roomCode: state.roomCode ?? '',
-              onJoin: (password, nick, colorHex) {
-                context.read<ChatBloc>().add(
-                  ConnectChat(
-                    roomCode: state.roomCode ?? '',
-                    nick: nick,
-                    colorHex: colorHex,
-                    password: password,
-                  ),
-                );
-              },
-            ),
+            builder: (bottomSheetContext) =>
+                PasswordPromptModal(roomCode: state.roomCode ?? ''),
           );
+          if (password != null && context.mounted) {
+            final identityState = context.read<identity.IdentityBloc>().state;
+            String nick = 'anonymous';
+            String colorHex = '';
+            if (identityState is identity.IdentityLoaded) {
+              nick = identityState.user.nickname;
+              colorHex = identityState.user.colorHex;
+            }
+            context.read<ChatBloc>().add(
+              ConnectChat(
+                roomCode: state.roomCode ?? '',
+                nick: nick,
+                colorHex: colorHex,
+                password: password,
+              ),
+            );
+          }
         } else if (state.error != null) {
           ScaffoldMessenger.of(
             context,

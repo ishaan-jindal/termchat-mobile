@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/room_join_helper.dart';
+import '../../../core/models/room_session.dart';
+import '../../../data/cache/room_session_cache.dart';
+import '../../../di/injection.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
 import '../../chat/bloc/chat_bloc.dart';
 import '../../chat/managers/active_chats_manager.dart';
@@ -40,8 +43,8 @@ class RoomsPage extends StatelessWidget {
                 const SizedBox(height: AppConstants.spacing16),
                 ValueListenableBuilder<List<String>>(
                   valueListenable: activeChatsManager.activeRoomsListenable,
-                  builder: (context, activeRooms, child) {
-                    if (activeRooms.isEmpty) {
+                  builder: (context, roomIds, child) {
+                    if (roomIds.isEmpty) {
                       return Center(
                         child: Padding(
                           padding: const EdgeInsets.all(32.0),
@@ -54,9 +57,15 @@ class RoomsPage extends StatelessWidget {
                     }
 
                     return Column(
-                      children: activeRooms.map((roomId) {
+                      children: roomIds.map((roomId) {
                         final chatBloc = activeChatsManager.get(roomId);
                         if (chatBloc == null) return const SizedBox.shrink();
+                        final session = activeChatsManager.cachedSessions
+                            .cast<RoomSession?>()
+                            .firstWhere(
+                              (s) => s?.roomId == roomId,
+                              orElse: () => null,
+                            );
 
                         return BlocBuilder<ChatBloc, ChatState>(
                           bloc: chatBloc,
@@ -78,15 +87,14 @@ class RoomsPage extends StatelessWidget {
                             return ActiveSessionCard(
                               roomName: roomId,
                               usersCount: chatState.users.length,
-                              unreadCount: 0,
+                              unreadCount: session?.unreadCount ?? 0,
                               isHost: isMeHost,
                               isViewing: false,
                               lastMessageText: lastMsg,
-                              onTap: () => RoomJoinHelper.joinRoom(
-                                context,
-                                roomId,
-                                false,
-                              ),
+                              onTap: () {
+                                getIt<RoomSessionCache>().clearUnread(roomId);
+                                RoomJoinHelper.joinRoom(context, roomId, false);
+                              },
                             );
                           },
                         );
@@ -96,8 +104,12 @@ class RoomsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: AppConstants.spacing48),
                 JoinAnotherRoomForm(
-                  onJoin: (roomCode) {
-                    RoomJoinHelper.joinRoom(context, roomCode, false);
+                  onJoin: (roomCode) async {
+                    return await RoomJoinHelper.joinRoom(
+                      context,
+                      roomCode,
+                      false,
+                    );
                   },
                 ),
                 const SizedBox(height: AppConstants.spacing48),

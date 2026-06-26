@@ -1,13 +1,11 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../settings/bloc/identity/identity_bloc.dart';
-import '../../chat/bloc/chat_bloc.dart';
-import '../../chat/managers/active_chats_manager.dart';
+import '../../../core/utils/room_join_helper.dart';
 
 class RoomActionCard extends StatefulWidget {
   const RoomActionCard({super.key});
@@ -18,41 +16,28 @@ class RoomActionCard extends StatefulWidget {
 
 class _RoomActionCardState extends State<RoomActionCard> {
   final _controller = TextEditingController();
+  String? _errorText;
 
-  String _getNick() {
-    final identityState = context.read<IdentityBloc>().state;
-    if (identityState is IdentityLoaded) {
-      return identityState.user.nickname;
-    }
-    return 'anonymous';
-  }
-
-  String _getColor() {
-    final identityState = context.read<IdentityBloc>().state;
-    if (identityState is IdentityLoaded) {
-      return identityState.user.colorHex;
-    }
-    return '';
-  }
-
-  void _handleJoin() {
-    final roomCode = _controller.text.trim();
-    if (roomCode.isNotEmpty) {
-      final chatBloc = context.read<ActiveChatsManager>().getOrCreate(roomCode);
-      if (!chatBloc.state.isConnected && !chatBloc.state.isLoading) {
-        chatBloc.add(
-          ConnectChat(
-            roomCode: roomCode,
-            nick: _getNick(),
-            colorHex: _getColor(),
-          ),
-        );
-      }
-      context.go('/chat/$roomCode');
+  void _onChanged(String value) {
+    if (_errorText != null) {
+      setState(() => _errorText = null);
     }
   }
 
-  void _handleCreate() {
+  Future<void> _handleJoin() async {
+    final roomCode = _controller.text.trim().toUpperCase();
+    if (roomCode.isEmpty) return;
+
+    if (!RegExp(r'^[A-Z0-9]{4}$').hasMatch(roomCode)) {
+      setState(() => _errorText = 'Room code must be 4 letters or numbers');
+      return;
+    }
+
+    final success = await RoomJoinHelper.joinRoom(context, roomCode, false);
+    if (success) _controller.clear();
+  }
+
+  Future<void> _handleCreate() async {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = Random();
     final newCode = String.fromCharCodes(
@@ -61,14 +46,14 @@ class _RoomActionCardState extends State<RoomActionCard> {
         (_) => chars.codeUnitAt(random.nextInt(chars.length)),
       ),
     );
+    final success = await RoomJoinHelper.joinRoom(context, newCode, false);
+    if (success) _controller.clear();
+  }
 
-    final chatBloc = context.read<ActiveChatsManager>().getOrCreate(newCode);
-    if (!chatBloc.state.isConnected && !chatBloc.state.isLoading) {
-      chatBloc.add(
-        ConnectChat(roomCode: newCode, nick: _getNick(), colorHex: _getColor()),
-      );
-    }
-    context.go('/chat/$newCode');
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -91,9 +76,17 @@ class _RoomActionCardState extends State<RoomActionCard> {
           const SizedBox(height: AppConstants.spacing12),
           TextField(
             controller: _controller,
-            decoration: const InputDecoration(hintText: '> e.g. FROG'),
+            decoration: InputDecoration(
+              hintText: '> e.g. FROG',
+              errorText: _errorText,
+            ),
             style: textTheme.bodyLarge,
             textCapitalization: TextCapitalization.characters,
+            maxLength: 4,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+            ],
+            onChanged: _onChanged,
             onSubmitted: (_) => _handleJoin(),
           ),
           const SizedBox(height: AppConstants.spacing16),
@@ -134,11 +127,5 @@ class _RoomActionCardState extends State<RoomActionCard> {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 }
