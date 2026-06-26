@@ -20,16 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Password prompt modal now returns the password as a result instead of calling an `onJoin` callback.
 - Join room text inputs are cleared after a successful join.
 - `RoomJoinHelper.joinRoom` is now async and returns `bool` indicating success.
-
-### Fixed
-- Chat history messages are now batched and replace the cached state atomically instead of being appended one by one.
-- Unread counts are tracked per room across app restarts.
-
-### Changed
 - Extracted network DTOs from `core/models/` into `data/models/` split by type.
 - Moved the app shell from `features/main/` to `core/layout/` and renamed `MainLayout` → `ShellLayout`.
 
 ### Fixed
+- Chat history messages are now batched and replace the cached state atomically instead of being appended one by one.
+- Unread counts are tracked per room across app restarts.
 - Chat page now navigates back on connection failure instead of showing a stuck broken page.
 - `/nick` and `/color` commands now persist locally before sending over the wire.
 
