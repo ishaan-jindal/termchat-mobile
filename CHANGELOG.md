@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Local SQLite persistence for room sessions and messages using Drift. Saved rooms and their message history now survive app restarts.
+- Saved room sessions are automatically re-connected on app launch (non-locked rooms only).
+- Background message notifications: when the app is minimized and a new message arrives, a local notification is shown with a deep-link to the room.
+- Room code input now validates for exactly 4 uppercase alphanumeric characters, with inline error feedback.
+- "Delete local cache" button in settings to clear all saved rooms and messages.
+- Auto-refresh for the "rooms online now" list every 30 seconds.
+
+### Changed
+- Joining a room now waits for a successful connection before navigating to the chat screen. On failure (wrong password, invalid code, timeout) a clear error snackbar is shown instead.
+- Password prompt modal now returns the password as a result instead of calling an `onJoin` callback.
+- Join room text inputs are cleared after a successful join.
+- `RoomJoinHelper.joinRoom` is now async and returns `bool` indicating success.
+
+### Fixed
+- Chat history messages are now batched and replace the cached state atomically instead of being appended one by one.
+- Unread counts are tracked per room across app restarts.
+
 ### Changed
 - Extracted network DTOs from `core/models/` into `data/models/` split by type.
 - Moved the app shell from `features/main/` to `core/layout/` and renamed `MainLayout` → `ShellLayout`.

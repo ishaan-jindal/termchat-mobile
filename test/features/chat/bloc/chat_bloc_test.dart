@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:termchat_app/core/models/message.dart';
+import 'package:termchat_app/core/models/room_session.dart';
+import 'package:termchat_app/data/cache/room_session_cache.dart';
 import 'package:termchat_app/data/models/backend_user_info.dart';
 import 'package:termchat_app/features/chat/bloc/chat_bloc.dart';
 import 'package:termchat_app/features/chat/repositories/chat_repository.dart';
@@ -16,41 +18,63 @@ class MockIdentityBloc extends Mock implements identity.IdentityBloc {}
 
 class MockSettingsBloc extends Mock implements SettingsBloc {}
 
+class MockRoomSessionCache extends Mock implements RoomSessionCache {}
+
 void main() {
   late ChatBloc chatBloc;
   late MockChatRepository mockRepo;
   late MockIdentityBloc mockIdentity;
   late MockSettingsBloc mockSettings;
+  late MockRoomSessionCache mockSessionCache;
 
   late StreamController<Message> messagesController;
+  late StreamController<List<Message>> batchController;
   late StreamController<List<BackendUserInfo>> usersController;
   late StreamController<ConnectionStatus> connectionStatusController;
+
+  setUpAll(() {
+    registerFallbackValue(
+      RoomSession(roomId: '', roomName: '', lastAccessedAt: 0, createdAt: 0),
+    );
+  });
 
   setUp(() {
     mockRepo = MockChatRepository();
     mockIdentity = MockIdentityBloc();
     mockSettings = MockSettingsBloc();
+    mockSessionCache = MockRoomSessionCache();
 
     when(() => mockIdentity.state).thenReturn(identity.IdentityInitial());
+    when(() => mockSettings.state).thenReturn(const SettingsState());
 
     messagesController = StreamController<Message>.broadcast();
+    batchController = StreamController<List<Message>>.broadcast();
     usersController = StreamController<List<BackendUserInfo>>.broadcast();
     connectionStatusController = StreamController<ConnectionStatus>.broadcast();
 
     when(() => mockRepo.messages).thenAnswer((_) => messagesController.stream);
+    when(
+      () => mockRepo.batchMessages,
+    ).thenAnswer((_) => batchController.stream);
     when(() => mockRepo.users).thenAnswer((_) => usersController.stream);
     when(
       () => mockRepo.connectionStatus,
     ).thenAnswer((_) => connectionStatusController.stream);
     when(() => mockRepo.disconnect()).thenAnswer((_) async {});
     when(() => mockRepo.dispose()).thenAnswer((_) {});
+    when(() => mockRepo.emitCachedMessages(any())).thenAnswer((_) async {});
+    when(
+      () => mockSessionCache.incrementUnread(any()),
+    ).thenAnswer((_) async {});
+    when(() => mockSessionCache.save(any())).thenAnswer((_) async {});
 
-    chatBloc = ChatBloc(mockRepo, mockIdentity, mockSettings);
+    chatBloc = ChatBloc(mockRepo, mockIdentity, mockSettings, mockSessionCache);
   });
 
   tearDown(() async {
     await chatBloc.close();
     await messagesController.close();
+    await batchController.close();
     await usersController.close();
     await connectionStatusController.close();
   });

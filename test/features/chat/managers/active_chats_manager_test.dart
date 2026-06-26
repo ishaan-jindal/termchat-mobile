@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:termchat_app/core/models/room_session.dart';
+import 'package:termchat_app/data/cache/room_session_cache.dart';
 import 'package:termchat_app/features/chat/bloc/chat_bloc.dart';
 import 'package:termchat_app/features/chat/managers/active_chats_manager.dart';
 import 'package:termchat_app/features/chat/repositories/chat_repository.dart';
@@ -14,14 +16,16 @@ ChatBloc createTestChatBloc() {
   final repo = MockChatRepository();
   final identity = MockIdentityBloc();
   final settings = MockSettingsBloc();
+  final sessionCache = MockRoomSessionCache();
 
   when(() => repo.messages).thenAnswer((_) => const Stream.empty());
+  when(() => repo.batchMessages).thenAnswer((_) => const Stream.empty());
   when(() => repo.users).thenAnswer((_) => const Stream.empty());
   when(() => repo.connectionStatus).thenAnswer((_) => const Stream.empty());
   when(() => repo.disconnect()).thenAnswer((_) async {});
   when(() => repo.dispose()).thenAnswer((_) {});
 
-  return ChatBloc(repo, identity, settings);
+  return ChatBloc(repo, identity, settings, sessionCache);
 }
 
 class MockChatBloc extends Mock implements ChatBloc {}
@@ -32,12 +36,24 @@ class MockIdentityBloc extends Mock implements identity.IdentityBloc {}
 
 class MockSettingsBloc extends Mock implements SettingsBloc {}
 
+class MockRoomSessionCache extends Mock implements RoomSessionCache {}
+
 void main() {
   late ActiveChatsManager manager;
+  late MockRoomSessionCache mockSessionCache;
+
+  setUpAll(() {
+    registerFallbackValue(
+      RoomSession(roomId: '', roomName: '', lastAccessedAt: 0, createdAt: 0),
+    );
+  });
 
   setUp(() {
+    mockSessionCache = MockRoomSessionCache();
+    when(() => mockSessionCache.save(any())).thenAnswer((_) async {});
+    when(() => mockSessionCache.delete(any())).thenAnswer((_) async {});
     GetIt.instance.registerFactory<ChatBloc>(createTestChatBloc);
-    manager = ActiveChatsManager();
+    manager = ActiveChatsManager(mockSessionCache);
   });
 
   tearDown(() {
