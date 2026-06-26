@@ -6,15 +6,8 @@ import '../constants/app_constants.dart';
 
 class PasswordPromptModal extends StatefulWidget {
   final String roomCode;
-  final Function(String, String, String) onJoin;
-  final VoidCallback? onCancel;
 
-  const PasswordPromptModal({
-    super.key,
-    required this.roomCode,
-    required this.onJoin,
-    this.onCancel,
-  });
+  const PasswordPromptModal({super.key, required this.roomCode});
 
   @override
   State<PasswordPromptModal> createState() => _PasswordPromptModalState();
@@ -27,15 +20,7 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
   void _handleJoin() {
     final password = _passwordController.text.trim();
     if (password.isNotEmpty) {
-      final state = context.read<IdentityBloc>().state;
-      String nick = 'anonymous';
-      String colorHex = '';
-      if (state is IdentityLoaded) {
-        nick = state.user.nickname;
-        colorHex = state.user.colorHex;
-      }
-      widget.onJoin(password, nick, colorHex);
-      Navigator.pop(context);
+      Navigator.pop(context, password);
     }
   }
 
@@ -161,7 +146,7 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: widget.onCancel ?? () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(context),
                     child: const Text('cancel'),
                   ),
                 ),

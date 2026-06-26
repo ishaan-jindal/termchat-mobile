@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -10,7 +12,11 @@ import '../widgets/password_prompt_modal.dart';
 class RoomJoinHelper {
   RoomJoinHelper._();
 
-  static void joinRoom(BuildContext context, String roomCode, bool isLocked) {
+  static Future<bool> joinRoom(
+    BuildContext context,
+    String roomCode,
+    bool isLocked,
+  ) async {
     final identityState = context.read<IdentityBloc>().state;
     String nick = 'anonymous';
     String colorHex = '';
@@ -23,32 +29,60 @@ class RoomJoinHelper {
     final isConnected = chatBloc.state.isConnected || chatBloc.state.isLoading;
 
     if (isLocked && !isConnected) {
-      showModalBottomSheet(
+      final password = await showModalBottomSheet<String>(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (bottomSheetContext) => PasswordPromptModal(
+        builder: (bottomSheetContext) =>
+            PasswordPromptModal(roomCode: roomCode),
+      );
+      if (password == null || !context.mounted) return false;
+      chatBloc.add(
+        ConnectChat(
           roomCode: roomCode,
-          onJoin: (password, nick, colorHex) {
-            chatBloc.add(
-              ConnectChat(
-                roomCode: roomCode,
-                nick: nick,
-                colorHex: colorHex,
-                password: password,
-              ),
-            );
-            context.go('/chat/$roomCode');
-          },
+          nick: nick,
+          colorHex: colorHex,
+          password: password,
         ),
       );
+    } else if (!isConnected) {
+      chatBloc.add(
+        ConnectChat(roomCode: roomCode, nick: nick, colorHex: colorHex),
+      );
     } else {
-      if (!isConnected) {
-        chatBloc.add(
-          ConnectChat(roomCode: roomCode, nick: nick, colorHex: colorHex),
-        );
-      }
       context.go('/chat/$roomCode');
+      return true;
+    }
+
+    try {
+      final result = await chatBloc.stream
+          .firstWhere((s) => s.isConnected || s.error != null)
+          .timeout(const Duration(seconds: 15));
+
+      if (!context.mounted) return false;
+
+      if (result.isConnected) {
+        context.go('/chat/$roomCode');
+        return true;
+      } else if (result.error == 'invalid_password') {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Wrong password')));
+        return false;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.error ?? 'Invalid room code')),
+        );
+        return false;
+      }
+    } on TimeoutException {
+      if (!context.mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not join room: Connection timed out'),
+        ),
+      );
+      return false;
     }
   }
 }
