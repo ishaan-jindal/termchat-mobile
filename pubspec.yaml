@@ -1,5 +1,5 @@
 name: termchat_app
-description: "A new Flutter project."
+description: "termchat mobile client"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -26,6 +26,10 @@ dependencies:
   web_socket_channel: ^3.0.3
   audioplayers: ^6.7.1
   flutter_local_notifications: ^22.0.1
+  drift: ^2.34.0
+  drift_flutter: ^0.3.0
+  path_provider: ^2.1.6
+  path: ^1.9.0
 
 dev_dependencies:
   flutter_test:
@@ -36,6 +40,7 @@ dev_dependencies:
   injectable_generator: ^3.1.0
   flutter_launcher_icons: ^0.14.4
   mocktail: ^1.0.5
+  drift_dev: ^2.34.1+1
 
 flutter:
 
