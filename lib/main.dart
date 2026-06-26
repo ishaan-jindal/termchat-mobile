@@ -6,20 +6,41 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_lifecycle_tracker.dart';
 import 'core/utils/notification_helper.dart';
+import 'data/database/app_database.dart';
+import 'data/cache/room_session_cache.dart';
+import 'data/cache/message_cache.dart';
 import 'features/settings/bloc/identity/identity_bloc.dart';
 import 'features/settings/bloc/settings/settings_bloc.dart';
 import 'features/rooms/bloc/rooms_bloc.dart';
+import 'features/chat/managers/active_chats_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   configureDependencies();
 
-  // Initialize lifecycle tracker and notifications setup
   AppLifecycleTracker.instance.init();
+
+  // Initialize database and cache services
+  final database = await AppDatabase.create();
+  getIt.registerLazySingleton<AppDatabase>(() => database);
+  getIt.registerLazySingleton<RoomSessionCache>(
+    () => RoomSessionCache(database),
+  );
+  getIt.registerLazySingleton<MessageCache>(() => MessageCache(database));
+
   await NotificationHelper.initialize();
 
   final identityBloc = getIt<IdentityBloc>()..add(LoadIdentity());
   final settingsBloc = getIt<SettingsBloc>()..add(LoadSettings());
+
+  // Wait for identity before auto-connecting saved rooms
+  if (identityBloc.state is! IdentityLoaded) {
+    await identityBloc.stream.firstWhere((s) => s is IdentityLoaded);
+  }
+
+  // Load and auto-connect saved room sessions
+  final activeChatsManager = getIt<ActiveChatsManager>();
+  await activeChatsManager.loadSavedSessions();
 
   runApp(TermchatApp(identityBloc: identityBloc, settingsBloc: settingsBloc));
 }

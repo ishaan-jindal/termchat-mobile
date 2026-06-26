@@ -1,4 +1,7 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import '../router/app_router.dart';
 
 class NotificationHelper {
   NotificationHelper._();
@@ -22,9 +25,10 @@ class NotificationHelper {
 
     await _localNotificationsPlugin.initialize(
       settings: initializationSettings,
+      onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+    const mentionsChannel = AndroidNotificationChannel(
       'mentions_channel',
       'Mentions',
       description: 'Notifications for when you are mentioned in a room.',
@@ -32,18 +36,33 @@ class NotificationHelper {
       playSound: true,
     );
 
-    await _localNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(channel);
+    const messagesChannel = AndroidNotificationChannel(
+      'messages_channel',
+      'Messages',
+      description: 'New messages in your rooms.',
+      importance: Importance.high,
+      playSound: true,
+    );
 
-    // Request notification permission for Android 13+
-    await _localNotificationsPlugin
+    final androidPlugin = _localNotificationsPlugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestNotificationsPermission();
+        >();
+
+    await androidPlugin?.createNotificationChannel(mentionsChannel);
+    await androidPlugin?.createNotificationChannel(messagesChannel);
+
+    await androidPlugin?.requestNotificationsPermission();
+  }
+
+  static void _onNotificationTap(NotificationResponse response) {
+    final roomCode = response.payload;
+    if (roomCode != null && roomCode.isNotEmpty) {
+      final context = AppRouter.rootNavigatorKey.currentContext;
+      if (context != null) {
+        GoRouter.of(context).go('/chat/$roomCode');
+      }
+    }
   }
 
   static Future<void> showMentionNotification({
@@ -71,6 +90,36 @@ class NotificationHelper {
       title: 'Mentioned in $roomName',
       body: '$sender: $content',
       notificationDetails: notificationDetails,
+    );
+  }
+
+  static Future<void> showMessageNotification({
+    required String roomCode,
+    required String sender,
+    required String content,
+  }) async {
+    const AndroidNotificationDetails androidNotificationDetails =
+        AndroidNotificationDetails(
+          'messages_channel',
+          'Messages',
+          channelDescription: 'New messages in your rooms.',
+          importance: Importance.high,
+          priority: Priority.high,
+        );
+
+    const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidNotificationDetails,
+    );
+
+    final id =
+        roomCode.hashCode ^ DateTime.now().millisecondsSinceEpoch.hashCode;
+
+    await _localNotificationsPlugin.show(
+      id: id,
+      title: sender,
+      body: content,
+      notificationDetails: notificationDetails,
+      payload: roomCode,
     );
   }
 }

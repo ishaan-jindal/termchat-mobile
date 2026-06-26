@@ -13,11 +13,11 @@ import '../../features/chat/managers/active_chats_manager.dart';
 class AppRouter {
   AppRouter._();
 
-  static final GlobalKey<NavigatorState> _rootNavigatorKey =
+  static final GlobalKey<NavigatorState> rootNavigatorKey =
       GlobalKey<NavigatorState>(debugLabel: 'root');
 
   static final GoRouter router = GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/',
     routes: [
       StatefulShellRoute.indexedStack(

@@ -8,6 +8,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/models/backend_message.dart';
 import '../../../data/models/backend_user_info.dart';
 import '../../../core/models/message.dart';
+import '../../../data/cache/message_cache.dart';
 
 enum ConnectionStatus { disconnected, connecting, connected, reconnecting }
 
@@ -19,17 +20,21 @@ abstract class ChatRepository {
   Future<void> updateColor(String color);
   Future<void> setPassword(String password);
   Future<void> sendTyping();
+  Future<void> emitCachedMessages(String roomCode);
   void dispose();
 
   Stream<Message> get messages;
+  Stream<List<Message>> get batchMessages;
   Stream<List<BackendUserInfo>> get users;
   Stream<ConnectionStatus> get connectionStatus;
 }
 
 @Injectable(as: ChatRepository)
 class ChatRepositoryImpl implements ChatRepository {
+  final MessageCache _messageCache;
   WebSocketChannel? _channel;
   final _messagesController = StreamController<Message>.broadcast();
+  final _batchController = StreamController<List<Message>>.broadcast();
   final _usersController = StreamController<List<BackendUserInfo>>.broadcast();
   final _connectionStatusController =
       StreamController<ConnectionStatus>.broadcast();
@@ -43,8 +48,13 @@ class ChatRepositoryImpl implements ChatRepository {
   int _reconnectAttempts = 0;
   Timer? _reconnectTimer;
 
+  ChatRepositoryImpl(this._messageCache);
+
   @override
   Stream<Message> get messages => _messagesController.stream;
+
+  @override
+  Stream<List<Message>> get batchMessages => _batchController.stream;
 
   @override
   Stream<List<BackendUserInfo>> get users => _usersController.stream;
@@ -52,6 +62,14 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Stream<ConnectionStatus> get connectionStatus =>
       _connectionStatusController.stream;
+
+  @override
+  Future<void> emitCachedMessages(String roomCode) async {
+    final cached = await _messageCache.getMessages(roomCode);
+    if (cached.isNotEmpty) {
+      _batchController.add(cached);
+    }
+  }
 
   @override
   Future<void> connect(String roomCode, String nick, {String? password}) async {
@@ -110,9 +128,18 @@ class ChatRepositoryImpl implements ChatRepository {
 
         if (msg.type == 'history') {
           if (msg.messages != null) {
-            for (var m in msg.messages!) {
-              _handleIncomingMessage(m, _roomCode ?? '');
-            }
+            final messages = msg.messages!
+                .where(
+                  (m) =>
+                      m.type == 'chat' ||
+                      m.type == 'message' ||
+                      m.type == 'system',
+                )
+                .map((m) => _convertToMessage(m, _roomCode ?? ''))
+                .whereType<Message>()
+                .toList();
+            _messageCache.replaceRoomMessages(_roomCode ?? '', messages);
+            _batchController.add(messages);
           }
         } else if (msg.type == 'users_list') {
           if (msg.users != null) {
@@ -183,28 +210,36 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   void _handleIncomingMessage(BackendMessage backendMsg, String roomCode) {
-    if (backendMsg.type == 'chat' ||
-        backendMsg.type == 'message' ||
-        backendMsg.type == 'system') {
-      final ts = backendMsg.timestamp;
-      final timestamp = ts != null
-          ? DateTime.fromMillisecondsSinceEpoch(ts)
-          : DateTime.now();
-      final nick = backendMsg.nick ?? 'system';
-      final msg = Message(
-        id: ts != null
-            ? '${ts}_$nick'
-            : '${timestamp.millisecondsSinceEpoch}_$nick',
-        roomId: roomCode,
-        senderId: nick,
-        senderNickname: nick,
-        senderColorHex: backendMsg.color ?? '#FFFFFF',
-        content: backendMsg.text ?? '',
-        timestamp: timestamp,
-        isSystemMessage: backendMsg.type == 'system',
-      );
-      _messagesController.add(msg);
+    final msg = _convertToMessage(backendMsg, roomCode);
+    if (msg == null) return;
+    _messageCache.insertMessage(msg);
+    _messageCache.trimRoom(roomCode);
+    _messagesController.add(msg);
+  }
+
+  Message? _convertToMessage(BackendMessage backendMsg, String roomCode) {
+    if (backendMsg.type != 'chat' &&
+        backendMsg.type != 'message' &&
+        backendMsg.type != 'system') {
+      return null;
     }
+    final ts = backendMsg.timestamp;
+    final timestamp = ts != null
+        ? DateTime.fromMillisecondsSinceEpoch(ts)
+        : DateTime.now();
+    final nick = backendMsg.nick ?? 'system';
+    return Message(
+      id: ts != null
+          ? '${ts}_$nick'
+          : '${timestamp.millisecondsSinceEpoch}_$nick',
+      roomId: roomCode,
+      senderId: nick,
+      senderNickname: nick,
+      senderColorHex: backendMsg.color ?? '#FFFFFF',
+      content: backendMsg.text ?? '',
+      timestamp: timestamp,
+      isSystemMessage: backendMsg.type == 'system',
+    );
   }
 
   @override
@@ -261,6 +296,7 @@ class ChatRepositoryImpl implements ChatRepository {
     _isDisposed = true;
     disconnect();
     _messagesController.close();
+    _batchController.close();
     _usersController.close();
     _connectionStatusController.close();
   }

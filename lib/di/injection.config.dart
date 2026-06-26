@@ -11,6 +11,8 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
+import 'package:termchat_app/data/cache/message_cache.dart' as _i347;
+import 'package:termchat_app/data/cache/room_session_cache.dart' as _i945;
 import 'package:termchat_app/features/chat/bloc/chat_bloc.dart' as _i213;
 import 'package:termchat_app/features/chat/managers/active_chats_manager.dart'
     as _i605;
@@ -35,8 +37,8 @@ extension GetItInjectableX on _i174.GetIt {
     _i526.EnvironmentFilter? environmentFilter,
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
-    gh.lazySingleton<_i605.ActiveChatsManager>(
-      () => _i605.ActiveChatsManager(),
+    gh.factory<_i811.ChatRepository>(
+      () => _i811.ChatRepositoryImpl(gh<_i347.MessageCache>()),
     );
     gh.lazySingleton<_i351.IdentityRepository>(
       () => _i351.IdentityRepositoryImpl(),
@@ -44,7 +46,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i732.SettingsRepository>(
       () => _i732.SettingsRepositoryImpl(),
     );
-    gh.factory<_i811.ChatRepository>(() => _i811.ChatRepositoryImpl());
     gh.lazySingleton<_i48.IdentityBloc>(
       () => _i48.IdentityBloc(gh<_i351.IdentityRepository>()),
     );
@@ -55,11 +56,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i1055.RoomsBloc>(
       () => _i1055.RoomsBloc(gh<_i949.RoomRepository>()),
     );
+    gh.lazySingleton<_i605.ActiveChatsManager>(
+      () => _i605.ActiveChatsManager(gh<_i945.RoomSessionCache>()),
+    );
     gh.factory<_i213.ChatBloc>(
       () => _i213.ChatBloc(
         gh<_i811.ChatRepository>(),
         gh<_i48.IdentityBloc>(),
         gh<_i395.SettingsBloc>(),
+        gh<_i945.RoomSessionCache>(),
       ),
     );
     return this;

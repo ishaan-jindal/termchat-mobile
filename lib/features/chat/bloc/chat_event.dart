@@ -83,3 +83,10 @@ class _ConnectionStatusChanged extends ChatEvent {
   @override
   List<Object?> get props => [status];
 }
+
+class _BatchMessagesReceived extends ChatEvent {
+  final List<Message> messages;
+  const _BatchMessagesReceived(this.messages);
+  @override
+  List<Object?> get props => [messages];
+}

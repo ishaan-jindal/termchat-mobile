@@ -9,6 +9,7 @@ import '../../../data/models/backend_user_info.dart';
 import '../../../core/utils/app_lifecycle_tracker.dart';
 import '../../../core/utils/notification_helper.dart';
 import '../../../core/utils/audio_helper.dart';
+import '../../../data/cache/room_session_cache.dart';
 import '../../settings/bloc/identity/identity_bloc.dart' as identity;
 import '../../settings/bloc/settings/settings_bloc.dart';
 import '../repositories/chat_repository.dart';
@@ -21,12 +22,18 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final ChatRepository _repository;
   final identity.IdentityBloc _identityBloc;
   final SettingsBloc _settingsBloc;
+  final RoomSessionCache _roomSessionCache;
   StreamSubscription<Message>? _messageSubscription;
+  StreamSubscription<List<Message>>? _batchSubscription;
   StreamSubscription<List<BackendUserInfo>>? _usersSubscription;
   StreamSubscription<ConnectionStatus>? _connectionStatusSubscription;
 
-  ChatBloc(this._repository, this._identityBloc, this._settingsBloc)
-    : super(const ChatState()) {
+  ChatBloc(
+    this._repository,
+    this._identityBloc,
+    this._settingsBloc,
+    this._roomSessionCache,
+  ) : super(const ChatState()) {
     on<ConnectChat>(_onConnectChat);
     on<SendMessage>(_onSendMessage);
     on<UpdateNickname>(_onUpdateNickname);
@@ -38,6 +45,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<_ChatError>(_onChatError);
     on<DisconnectChat>(_onDisconnectChat);
     on<_ConnectionStatusChanged>(_onConnectionStatusChanged);
+    on<_BatchMessagesReceived>(_onBatchMessagesReceived);
   }
 
   Future<void> _onConnectChat(
@@ -46,17 +54,25 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
+      // 1. Emit cached messages immediately
+      _repository.emitCachedMessages(event.roomCode);
+
       await _connectionStatusSubscription?.cancel();
       _connectionStatusSubscription = _repository.connectionStatus.listen(
         (status) => add(_ConnectionStatusChanged(status)),
       );
 
       await _messageSubscription?.cancel();
+      await _batchSubscription?.cancel();
       await _usersSubscription?.cancel();
 
       _messageSubscription = _repository.messages.listen(
         (message) => add(_MessageReceived(message)),
         onError: (error) => add(_ChatError(error.toString())),
+      );
+
+      _batchSubscription = _repository.batchMessages.listen(
+        (msgs) => add(_BatchMessagesReceived(msgs)),
       );
 
       _usersSubscription = _repository.users.listen(
@@ -182,7 +198,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       ..add(event.message);
     emit(state.copyWith(messages: updatedMessages));
 
-    // Check for user mention
     final identityState = _identityBloc.state;
     final myNick = identityState is identity.IdentityLoaded
         ? identityState.user.nickname
@@ -192,25 +207,29 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         event.message.content.contains('@$myNick') &&
         event.message.senderNickname != myNick &&
         !event.message.isSystemMessage;
+    final isBackground = AppLifecycleTracker.instance.isBackground;
+    final settingsState = _settingsBloc.state;
 
-    if (isMention) {
-      final isBackground = AppLifecycleTracker.instance.isBackground;
-      final settingsState = _settingsBloc.state;
-
-      if (isBackground) {
-        if (settingsState.messageNotificationsEnabled) {
-          NotificationHelper.showMentionNotification(
-            roomName: state.roomCode ?? '',
-            sender: event.message.senderNickname,
-            content: event.message.content,
-          );
-        }
-      } else {
-        if (settingsState.mentionSoundEnabled) {
-          AudioHelper.playMentionChime();
-        }
+    if (isBackground && settingsState.messageNotificationsEnabled) {
+      final roomCode = state.roomCode ?? '';
+      NotificationHelper.showMessageNotification(
+        roomCode: roomCode,
+        sender: event.message.senderNickname,
+        content: event.message.content,
+      );
+      _roomSessionCache.incrementUnread(roomCode);
+    } else if (isMention) {
+      if (settingsState.mentionSoundEnabled) {
+        AudioHelper.playMentionChime();
       }
     }
+  }
+
+  void _onBatchMessagesReceived(
+    _BatchMessagesReceived event,
+    Emitter<ChatState> emit,
+  ) {
+    emit(state.copyWith(messages: event.messages));
   }
 
   void _onUsersUpdated(_UsersUpdated event, Emitter<ChatState> emit) {
@@ -277,6 +296,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   @override
   Future<void> close() {
     _messageSubscription?.cancel();
+    _batchSubscription?.cancel();
     _usersSubscription?.cancel();
     _connectionStatusSubscription?.cancel();
     _repository.dispose();
