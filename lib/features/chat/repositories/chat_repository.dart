@@ -186,14 +186,21 @@ class ChatRepositoryImpl implements ChatRepository {
     if (backendMsg.type == 'chat' ||
         backendMsg.type == 'message' ||
         backendMsg.type == 'system') {
+      final ts = backendMsg.timestamp;
+      final timestamp = ts != null
+          ? DateTime.fromMillisecondsSinceEpoch(ts)
+          : DateTime.now();
+      final nick = backendMsg.nick ?? 'system';
       final msg = Message(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: ts != null
+            ? '${ts}_$nick'
+            : '${timestamp.millisecondsSinceEpoch}_$nick',
         roomId: roomCode,
-        senderId: backendMsg.nick ?? 'system',
-        senderNickname: backendMsg.nick ?? 'system',
+        senderId: nick,
+        senderNickname: nick,
         senderColorHex: backendMsg.color ?? '#FFFFFF',
         content: backendMsg.text ?? '',
-        timestamp: DateTime.now(),
+        timestamp: timestamp,
         isSystemMessage: backendMsg.type == 'system',
       );
       _messagesController.add(msg);
