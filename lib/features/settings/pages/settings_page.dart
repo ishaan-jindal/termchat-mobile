@@ -5,6 +5,7 @@ import '../widgets/appearance_settings.dart';
 import '../widgets/identity_settings.dart';
 import '../widgets/notification_settings.dart';
 import '../widgets/about_settings.dart';
+import '../widgets/data_settings.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -35,6 +36,8 @@ class SettingsPage extends StatelessWidget {
                 const NotificationSettings(),
                 const SizedBox(height: AppConstants.spacing32),
                 const AboutSettings(),
+                const SizedBox(height: AppConstants.spacing32),
+                const DataSettings(),
                 const SizedBox(height: AppConstants.spacing48),
               ],
             ),
