@@ -51,12 +51,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         (status) => add(_ConnectionStatusChanged(status)),
       );
 
-      await _repository.connect(
-        event.roomCode,
-        event.nick,
-        password: event.password,
-      );
-
       await _messageSubscription?.cancel();
       await _usersSubscription?.cancel();
 
@@ -68,6 +62,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       _usersSubscription = _repository.users.listen(
         (users) => add(_UsersUpdated(users)),
         onError: (error) {},
+      );
+
+      await _repository.connect(
+        event.roomCode,
+        event.nick,
+        password: event.password,
       );
 
       emit(
