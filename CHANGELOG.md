@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Comprehensive test suite with 90+ unit tests across models, BLoCs, and repositories.
+- Auto-refresh for the "rooms online now" list every 30 seconds.
+- Dependabot configuration for automated dependency updates.
+- Contribution guidelines (`CONTRIBUTING.md`).
+
+### Changed
+- Joining a room now waits for a successful connection before navigating to the chat screen. On failure (wrong password, invalid code, timeout) a clear error snackbar is shown instead.
+- Room code input now validates for exactly 4 uppercase alphanumeric characters, with inline error feedback.
+- Password prompt modal now returns the password as a result instead of calling an `onJoin` callback.
+- Join room text inputs are cleared after a successful join.
+- `RoomJoinHelper.joinRoom` is now async and returns `bool` indicating success.
+- Extracted network DTOs from `core/models/` into `data/models/` split by type.
+- Moved the app shell from `features/main/` to `core/layout/` and renamed `MainLayout` → `ShellLayout`.
+- Updated README with improved project description and links.
+
+### Fixed
+- Chat history messages are now batched and replace the state atomically instead of being appended one by one.
+- Chat page now navigates back on connection failure instead of showing a stuck broken page.
+- `/nick` and `/color` commands now persist locally before sending over the wire.
+- Message timestamps now use server-provided unix millis timestamps instead of `DateTime.now()`.
+- Chat input maintains keyboard focus after sending a message.
+
+### Removed
+- Removed unused `theme_cubit.dart` and stub `joinRoom`/`leaveRoom` repository methods.
+- Removed direct `getIt()` calls from widgets (replaced with `context.read()` via `RepositoryProvider`).
+- Removed redundant `/nick`/`/color` handling from `chat_page.dart` (handled in `ChatBloc`).
+- Injected `IdentityBloc` and `SettingsBloc` into `ChatBloc` constructor instead of `getIt()` lookups.
+
 ## [1.2.1] - 2026-06-18
 
 ### Fixed

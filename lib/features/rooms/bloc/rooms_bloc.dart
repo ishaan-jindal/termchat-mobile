@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
@@ -11,9 +13,13 @@ part 'rooms_event.dart';
 @injectable
 class RoomsBloc extends Bloc<RoomsEvent, RoomsState> {
   final RoomRepository _repository;
+  Timer? _refreshTimer;
 
   RoomsBloc(this._repository) : super(const RoomsState()) {
     on<LoadActiveSessions>(_onLoadActiveSessions);
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      add(LoadActiveSessions());
+    });
   }
 
   Future<void> _onLoadActiveSessions(
@@ -27,5 +33,11 @@ class RoomsBloc extends Bloc<RoomsEvent, RoomsState> {
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _refreshTimer?.cancel();
+    return super.close();
   }
 }

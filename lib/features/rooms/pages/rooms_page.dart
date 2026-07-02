@@ -3,9 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/room_join_helper.dart';
-import '../../../core/models/room_session.dart';
-import '../../../data/cache/room_session_cache.dart';
-import '../../../di/injection.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
 import '../../chat/bloc/chat_bloc.dart';
 import '../../chat/managers/active_chats_manager.dart';
@@ -60,12 +57,6 @@ class RoomsPage extends StatelessWidget {
                       children: roomIds.map((roomId) {
                         final chatBloc = activeChatsManager.get(roomId);
                         if (chatBloc == null) return const SizedBox.shrink();
-                        final session = activeChatsManager.cachedSessions
-                            .cast<RoomSession?>()
-                            .firstWhere(
-                              (s) => s?.roomId == roomId,
-                              orElse: () => null,
-                            );
 
                         return BlocBuilder<ChatBloc, ChatState>(
                           bloc: chatBloc,
@@ -87,12 +78,11 @@ class RoomsPage extends StatelessWidget {
                             return ActiveSessionCard(
                               roomName: roomId,
                               usersCount: chatState.users.length,
-                              unreadCount: session?.unreadCount ?? 0,
+                              unreadCount: 0,
                               isHost: isMeHost,
                               isViewing: false,
                               lastMessageText: lastMsg,
                               onTap: () {
-                                getIt<RoomSessionCache>().clearUnread(roomId);
                                 RoomJoinHelper.joinRoom(context, roomId, false);
                               },
                             );
