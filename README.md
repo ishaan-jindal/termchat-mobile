@@ -1,6 +1,6 @@
 # termchat-mobile
 
-> The mobile companion to **termchat**. Real-time, anonymous, room-based chat from your terminal, now on Android and iOS.
+> The official mobile client for [**termchat**](https://github.com/ishaan-jindal/termchat). Real-time, anonymous, room-based chat from your terminal, now on Android and iOS. Fully compatible with the `termchat` CLI.
 
 Create a room, share a code, and start chatting instantly. Zero setup, zero tracking.
 
