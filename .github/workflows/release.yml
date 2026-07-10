@@ -101,7 +101,7 @@ jobs:
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: download-manager-release-${{ steps.app_version.outputs.version }}
+          name: termchat-release-${{ steps.app_version.outputs.version }}
           path: |
             build/app/outputs/flutter-apk/Termchat-${{ steps.app_version.outputs.version }}.apk
             build/app/outputs/bundle/release/Termchat-${{ steps.app_version.outputs.version }}.aab
