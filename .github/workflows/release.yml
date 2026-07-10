@@ -67,6 +67,7 @@ jobs:
         id: changelog_reader
         run: |
           VERSION="${{ steps.app_version.outputs.version }}"
+          VERSION="${VERSION%%+*}"
           python3 -c "
           import re, sys
           version = sys.argv[1]
