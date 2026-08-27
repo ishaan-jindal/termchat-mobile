@@ -8,6 +8,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/models/backend_message.dart';
 import '../../../data/models/backend_user_info.dart';
 import '../../../core/models/message.dart';
+import '../../../core/models/reaction.dart';
 
 enum ConnectionStatus { disconnected, connecting, connected, reconnecting }
 
@@ -191,10 +192,13 @@ class ChatRepositoryImpl implements ChatRepository {
           ? DateTime.fromMillisecondsSinceEpoch(ts)
           : DateTime.now();
       final nick = backendMsg.nick ?? 'system';
+      final id =
+          backendMsg.id?.toString() ??
+          (ts != null
+              ? '${ts}_$nick'
+              : '${timestamp.millisecondsSinceEpoch}_$nick');
       final msg = Message(
-        id: ts != null
-            ? '${ts}_$nick'
-            : '${timestamp.millisecondsSinceEpoch}_$nick',
+        id: id,
         roomId: roomCode,
         senderId: nick,
         senderNickname: nick,
@@ -202,6 +206,14 @@ class ChatRepositoryImpl implements ChatRepository {
         content: backendMsg.text ?? '',
         timestamp: timestamp,
         isSystemMessage: backendMsg.type == 'system',
+        reactions:
+            backendMsg.reactions
+                ?.map((r) => Reaction(name: r.name, count: r.count))
+                .toList() ??
+            const [],
+        replyToId: backendMsg.replyToId,
+        replyToNick: backendMsg.replyToNick,
+        replyToText: backendMsg.replyToText,
       );
       _messagesController.add(msg);
     }
