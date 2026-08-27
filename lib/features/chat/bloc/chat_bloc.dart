@@ -6,6 +6,7 @@ import 'package:injectable/injectable.dart';
 
 import '../../../core/models/message.dart';
 import '../../../data/models/backend_user_info.dart';
+import '../models/reaction_update.dart';
 import '../../../core/utils/app_lifecycle_tracker.dart';
 import '../../../core/utils/notification_helper.dart';
 import '../../../core/utils/audio_helper.dart';
@@ -23,6 +24,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final SettingsBloc _settingsBloc;
   StreamSubscription<Message>? _messageSubscription;
   StreamSubscription<List<BackendUserInfo>>? _usersSubscription;
+  StreamSubscription<ReactionUpdate>? _reactionSubscription;
   StreamSubscription<ConnectionStatus>? _connectionStatusSubscription;
 
   ChatBloc(this._repository, this._identityBloc, this._settingsBloc)
@@ -33,8 +35,10 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<UpdateColor>(_onUpdateColor);
     on<SetRoomPassword>(_onSetRoomPassword);
     on<SendTyping>(_onSendTyping);
+    on<SendReaction>(_onSendReaction);
     on<_MessageReceived>(_onMessageReceived);
     on<_UsersUpdated>(_onUsersUpdated);
+    on<_ReactionUpdated>(_onReactionUpdated);
     on<_ChatError>(_onChatError);
     on<DisconnectChat>(_onDisconnectChat);
     on<_ConnectionStatusChanged>(_onConnectionStatusChanged);
@@ -62,6 +66,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       _usersSubscription = _repository.users.listen(
         (users) => add(_UsersUpdated(users)),
         onError: (error) {},
+      );
+
+      _reactionSubscription = _repository.reactionUpdates.listen(
+        (update) => add(_ReactionUpdated(update)),
+        onError: (_) {},
       );
 
       await _repository.connect(
@@ -177,6 +186,25 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     }
   }
 
+  Future<void> _onSendReaction(
+    SendReaction event,
+    Emitter<ChatState> emit,
+  ) async {
+    try {
+      final key = '${event.messageId}:${event.name}';
+      final myReactions = Set<String>.from(state.myReactions);
+      if (myReactions.contains(key)) {
+        myReactions.remove(key);
+      } else {
+        myReactions.add(key);
+      }
+      emit(state.copyWith(myReactions: myReactions));
+      await _repository.sendReaction(event.messageId, event.name);
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+    }
+  }
+
   void _onMessageReceived(_MessageReceived event, Emitter<ChatState> emit) {
     final updatedMessages = List<Message>.from(state.messages)
       ..add(event.message);
@@ -217,6 +245,15 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(state.copyWith(users: event.users));
   }
 
+  void _onReactionUpdated(_ReactionUpdated event, Emitter<ChatState> emit) {
+    final messageId = event.update.messageId;
+    final updated = state.messages.map((m) {
+      if (m.id != messageId) return m;
+      return m.copyWith(reactions: event.update.reactions);
+    }).toList();
+    emit(state.copyWith(messages: updated));
+  }
+
   void _onChatError(_ChatError event, Emitter<ChatState> emit) {
     emit(state.copyWith(error: event.error, isConnected: false));
   }
@@ -227,9 +264,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) async {
     await _messageSubscription?.cancel();
     await _usersSubscription?.cancel();
+    await _reactionSubscription?.cancel();
     await _connectionStatusSubscription?.cancel();
     _messageSubscription = null;
     _usersSubscription = null;
+    _reactionSubscription = null;
     _connectionStatusSubscription = null;
     await _repository.disconnect();
     emit(const ChatState());
@@ -278,6 +317,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   Future<void> close() {
     _messageSubscription?.cancel();
     _usersSubscription?.cancel();
+    _reactionSubscription?.cancel();
     _connectionStatusSubscription?.cancel();
     _repository.dispose();
     return super.close();

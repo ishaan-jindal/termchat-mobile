@@ -4,8 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_constants.dart';
 import '../bloc/chat_bloc.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
-import '../../../core/utils/color_utils.dart';
 import 'chat_message_bubble.dart';
+import 'reaction_picker.dart';
 
 class MessageList extends StatefulWidget {
   const MessageList({super.key});
@@ -75,11 +75,28 @@ class _MessageListState extends State<MessageList> {
             final isMention =
                 myNick.isNotEmpty && msg.content.contains('@$myNick');
 
+            final canReact =
+                !msg.isSystemMessage && int.tryParse(msg.id) != null;
+
             return ChatMessageBubble(
-              username: msg.senderNickname,
-              usernameColor: ColorUtils.parseHexColor(msg.senderColorHex),
-              message: msg.content,
+              message: msg,
               isMention: isMention,
+              myReactions: state.myReactions,
+              onReact: canReact
+                  ? () => showReactionPicker(
+                      context,
+                      state.myReactions,
+                      msg.id,
+                      (name) => context.read<ChatBloc>().add(
+                        SendReaction(int.parse(msg.id), name),
+                      ),
+                    )
+                  : null,
+              onToggleReaction: canReact
+                  ? (name) => context.read<ChatBloc>().add(
+                      SendReaction(int.parse(msg.id), name),
+                    )
+                  : null,
             );
           },
         );

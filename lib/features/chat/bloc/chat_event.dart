@@ -54,6 +54,14 @@ class SetRoomPassword extends ChatEvent {
 
 class SendTyping extends ChatEvent {}
 
+class SendReaction extends ChatEvent {
+  final int messageId;
+  final String name;
+  const SendReaction(this.messageId, this.name);
+  @override
+  List<Object?> get props => [messageId, name];
+}
+
 class _MessageReceived extends ChatEvent {
   final Message message;
   const _MessageReceived(this.message);
@@ -66,6 +74,13 @@ class _UsersUpdated extends ChatEvent {
   const _UsersUpdated(this.users);
   @override
   List<Object?> get props => [users];
+}
+
+class _ReactionUpdated extends ChatEvent {
+  final ReactionUpdate update;
+  const _ReactionUpdated(this.update);
+  @override
+  List<Object?> get props => [update];
 }
 
 class _ChatError extends ChatEvent {

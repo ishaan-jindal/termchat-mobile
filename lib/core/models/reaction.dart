@@ -19,3 +19,16 @@ const List<String> reactionNames = <String>[
   'fire',
   'clap',
 ];
+
+const Map<String, String> reactionEmoji = <String, String>{
+  '+1': '👍',
+  '-1': '👎',
+  'laugh': '😂',
+  'heart': '❤️',
+  'wow': '😮',
+  'eyes': '👀',
+  'fire': '🔥',
+  'clap': '👏',
+};
+
+String reactionGlyph(String name) => reactionEmoji[name] ?? name;
