@@ -31,6 +31,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     : super(const ChatState()) {
     on<ConnectChat>(_onConnectChat);
     on<SendMessage>(_onSendMessage);
+    on<SetReplyTarget>(_onSetReplyTarget);
+    on<ClearReplyTarget>(_onClearReplyTarget);
     on<UpdateNickname>(_onUpdateNickname);
     on<UpdateColor>(_onUpdateColor);
     on<SetRoomPassword>(_onSetRoomPassword);
@@ -137,10 +139,27 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         }
       }
 
-      await _repository.sendMessage(content);
+      await _repository.sendMessage(content, replyToId: event.replyToId);
+      if (event.replyToId != null) {
+        emit(state.copyWith(replyingTo: null, clearReplyingTo: true));
+      }
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }
+  }
+
+  Future<void> _onSetReplyTarget(
+    SetReplyTarget event,
+    Emitter<ChatState> emit,
+  ) async {
+    emit(state.copyWith(replyingTo: event.target));
+  }
+
+  Future<void> _onClearReplyTarget(
+    ClearReplyTarget event,
+    Emitter<ChatState> emit,
+  ) async {
+    emit(state.copyWith(replyingTo: null, clearReplyingTo: true));
   }
 
   Future<void> _onUpdateNickname(

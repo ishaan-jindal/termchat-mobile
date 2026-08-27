@@ -12,6 +12,7 @@ class ChatMessageBubble extends StatelessWidget {
   final Set<String> myReactions;
   final VoidCallback? onReact;
   final void Function(String name)? onToggleReaction;
+  final VoidCallback? onTapQuote;
 
   const ChatMessageBubble({
     super.key,
@@ -20,6 +21,7 @@ class ChatMessageBubble extends StatelessWidget {
     this.myReactions = const {},
     this.onReact,
     this.onToggleReaction,
+    this.onTapQuote,
   });
 
   @override
@@ -28,9 +30,18 @@ class ChatMessageBubble extends StatelessWidget {
     final textTheme = theme.textTheme;
     final isDark = theme.brightness == Brightness.dark;
 
+    final surfaceColor = isDark
+        ? AppColors.bgElevatedDark
+        : AppColors.bgElevatedLight;
+    final borderColor = isDark
+        ? AppColors.borderDefaultDark
+        : AppColors.borderDefaultLight;
+    final primaryTextColor = isDark
+        ? AppColors.textPrimaryDark
+        : AppColors.textPrimaryLight;
     final bgColor = isMention
         ? (isDark ? AppColors.mentionBgDark : AppColors.mentionBgLight)
-        : Colors.transparent;
+        : surfaceColor;
 
     final mentionTextColor = isDark
         ? AppColors.mentionTextDark
@@ -38,68 +49,109 @@ class ChatMessageBubble extends StatelessWidget {
 
     final usernameColor = ColorUtils.parseHexColor(message.senderColorHex);
 
-    return Container(
-      color: bgColor,
+    return Padding(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppConstants.spacing24,
+        horizontal: AppConstants.spacing16,
         vertical: AppConstants.spacing4,
       ),
       child: InkWell(
         onLongPress: onReact,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        borderRadius: BorderRadius.circular(AppConstants.radius12),
+        child: Stack(
           children: [
             Container(
-              width: 16,
-              height: 16,
-              margin: const EdgeInsets.only(top: 2),
               decoration: BoxDecoration(
-                color: usernameColor,
-                shape: BoxShape.circle,
+                color: bgColor,
+                borderRadius: BorderRadius.circular(AppConstants.radius12),
+                border: Border.all(color: borderColor),
               ),
-              alignment: Alignment.center,
-              child: Text(
-                message.senderNickname.substring(0, 1).toUpperCase(),
-                style: textTheme.labelSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.spacing12,
+                vertical: AppConstants.spacing8,
               ),
-            ),
-            const SizedBox(width: AppConstants.spacing8),
-            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RichText(
-                    text: TextSpan(
-                      style: textTheme.bodyLarge,
-                      children: [
-                        TextSpan(
-                          text: '${message.senderNickname}\n',
-                          style: textTheme.titleMedium?.copyWith(
-                            color: usernameColor,
-                          ),
-                        ),
-                        TextSpan(
-                          text: message.content,
-                          style: isMention
-                              ? textTheme.bodyLarge?.copyWith(
-                                  color: mentionTextColor,
-                                  fontWeight: FontWeight.bold,
-                                )
-                              : textTheme.bodyLarge,
-                        ),
-                      ],
+                  if (message.replyToId != null && message.replyToId! > 0)
+                    _buildReplyQuote(context),
+                  Text(
+                    '> ${message.senderNickname}',
+                    style: textTheme.titleMedium?.copyWith(
+                      color: usernameColor,
                     ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    message.content,
+                    style: isMention
+                        ? textTheme.bodyLarge?.copyWith(
+                            color: mentionTextColor,
+                            fontWeight: FontWeight.bold,
+                          )
+                        : textTheme.bodyLarge?.copyWith(
+                            color: primaryTextColor,
+                          ),
                   ),
                   if (message.reactions.isNotEmpty)
                     _buildReactionChips(context),
                 ],
               ),
             ),
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 3,
+                decoration: BoxDecoration(
+                  color: usernameColor,
+                  borderRadius: BorderRadius.horizontal(
+                    left: Radius.circular(AppConstants.radius12),
+                  ),
+                ),
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReplyQuote(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppConstants.spacing4),
+      child: InkWell(
+        onTap: onTapQuote,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppConstants.spacing8,
+            vertical: 2,
+          ),
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(color: Theme.of(context).dividerColor, width: 3),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                message.replyToNick ?? '',
+                style: textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                message.replyToText ?? '',
+                style: textTheme.labelSmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
     );

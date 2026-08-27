@@ -26,10 +26,20 @@ class ConnectChat extends ChatEvent {
 
 class SendMessage extends ChatEvent {
   final String content;
-  const SendMessage(this.content);
+  final int? replyToId;
+  const SendMessage(this.content, [this.replyToId]);
   @override
-  List<Object?> get props => [content];
+  List<Object?> get props => [content, replyToId];
 }
+
+class SetReplyTarget extends ChatEvent {
+  final Message target;
+  const SetReplyTarget(this.target);
+  @override
+  List<Object?> get props => [target];
+}
+
+class ClearReplyTarget extends ChatEvent {}
 
 class UpdateNickname extends ChatEvent {
   final String nickname;
