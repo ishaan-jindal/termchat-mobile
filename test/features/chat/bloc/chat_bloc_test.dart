@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:termchat_app/core/models/message.dart';
+import 'package:termchat_app/core/models/reaction.dart';
 import 'package:termchat_app/data/models/backend_user_info.dart';
 import 'package:termchat_app/features/chat/bloc/chat_bloc.dart';
+import 'package:termchat_app/features/chat/models/reaction_update.dart';
 import 'package:termchat_app/features/chat/repositories/chat_repository.dart';
 import 'package:termchat_app/features/settings/bloc/identity/identity_bloc.dart'
     as identity;
@@ -16,6 +18,18 @@ class MockIdentityBloc extends Mock implements identity.IdentityBloc {}
 
 class MockSettingsBloc extends Mock implements SettingsBloc {}
 
+Future<void> waitForState(ChatBloc bloc, bool Function(ChatState) predicate) {
+  final completer = Completer<void>();
+  late final StreamSubscription<ChatState> sub;
+  sub = bloc.stream.listen((s) {
+    if (predicate(s)) {
+      sub.cancel();
+      completer.complete();
+    }
+  });
+  return completer.future;
+}
+
 void main() {
   late ChatBloc chatBloc;
   late MockChatRepository mockRepo;
@@ -25,6 +39,7 @@ void main() {
   late StreamController<Message> messagesController;
   late StreamController<List<BackendUserInfo>> usersController;
   late StreamController<ConnectionStatus> connectionStatusController;
+  late StreamController<ReactionUpdate> reactionUpdatesController;
 
   setUp(() {
     mockRepo = MockChatRepository();
@@ -36,11 +51,14 @@ void main() {
     messagesController = StreamController<Message>.broadcast();
     usersController = StreamController<List<BackendUserInfo>>.broadcast();
     connectionStatusController = StreamController<ConnectionStatus>.broadcast();
+    reactionUpdatesController = StreamController<ReactionUpdate>.broadcast();
 
     when(() => mockRepo.messages).thenAnswer((_) => messagesController.stream);
     when(() => mockRepo.users).thenAnswer((_) => usersController.stream);
     when(() => mockRepo.connectionStatus)
         .thenAnswer((_) => connectionStatusController.stream);
+    when(() => mockRepo.reactionUpdates)
+        .thenAnswer((_) => reactionUpdatesController.stream);
     when(() => mockRepo.disconnect()).thenAnswer((_) async {});
     when(() => mockRepo.dispose()).thenAnswer((_) {});
 
@@ -52,6 +70,7 @@ void main() {
     await messagesController.close();
     await usersController.close();
     await connectionStatusController.close();
+    await reactionUpdatesController.close();
   });
 
   /// Helper: triggers the connect flow so stream subscriptions are active.
@@ -87,10 +106,7 @@ void main() {
         chatBloc.add(
           const ConnectChat(roomCode: 'room1', nick: 'Alice', colorHex: ''),
         );
-
-        // Wait for async connect handler to complete
-        await Future(() {});
-        await Future(() {});
+        await waitForState(chatBloc, (s) => s.isConnected);
 
         expect(chatBloc.state.isConnected, isTrue);
         expect(chatBloc.state.isLoading, isFalse);
@@ -109,9 +125,7 @@ void main() {
         chatBloc.add(
           const ConnectChat(roomCode: 'room1', nick: 'Alice', colorHex: ''),
         );
-
-        await Future(() {});
-        await Future(() {});
+        await waitForState(chatBloc, (s) => s.error != null);
 
         expect(chatBloc.state.error, 'Exception: Connection failed');
         expect(chatBloc.state.isLoading, isFalse);
@@ -135,8 +149,7 @@ void main() {
           ),
         );
 
-        await Future(() {});
-        await Future(() {});
+        await untilCalled(() => mockRepo.updateColor('#FF0000'));
 
         verify(() => mockRepo.updateColor('#FF0000')).called(1);
       });
@@ -316,6 +329,93 @@ void main() {
 
         expect(chatBloc.state.error, 'Stream error');
         expect(chatBloc.state.isConnected, isFalse);
+      });
+    });
+
+    group('ReplyTarget', () {
+      final msg = Message(
+        id: 'm1',
+        roomId: 'r1',
+        senderId: 'u1',
+        senderNickname: 'Alice',
+        senderColorHex: '#FF0000',
+        content: 'Hello',
+        timestamp: DateTime.now(),
+      );
+
+      test('SetReplyTarget sets replyingTo', () async {
+        chatBloc.add(SetReplyTarget(msg));
+        await waitForState(chatBloc, (s) => s.replyingTo == msg);
+        expect(chatBloc.state.replyingTo, msg);
+      });
+
+      test('ClearReplyTarget clears replyingTo', () async {
+        chatBloc.add(SetReplyTarget(msg));
+        await waitForState(chatBloc, (s) => s.replyingTo == msg);
+
+        chatBloc.add(ClearReplyTarget());
+        await waitForState(chatBloc, (s) => s.replyingTo == null);
+        expect(chatBloc.state.replyingTo, isNull);
+      });
+
+      test('SendMessage with replyToId clears replyingTo', () async {
+        when(
+          () => mockRepo.sendMessage(any(), replyToId: any(named: 'replyToId')),
+        ).thenAnswer((_) async {});
+
+        chatBloc.add(SetReplyTarget(msg));
+        await waitForState(chatBloc, (s) => s.replyingTo == msg);
+
+        chatBloc.add(SendMessage('hi', 123));
+        await waitForState(chatBloc, (s) => s.replyingTo == null);
+
+        verify(() => mockRepo.sendMessage('hi', replyToId: 123)).called(1);
+        expect(chatBloc.state.replyingTo, isNull);
+      });
+    });
+
+    group('Reactions', () {
+      final msg = Message(
+        id: 'm1',
+        roomId: 'r1',
+        senderId: 'u1',
+        senderNickname: 'Alice',
+        senderColorHex: '#FF0000',
+        content: 'Hello',
+        timestamp: DateTime.now(),
+        reactions: const [Reaction(name: '+1', count: 1)],
+      );
+
+      setUp(() async {
+        await connectToRoom();
+      });
+
+      test('toggles myReactions on add then remove', () async {
+        when(() => mockRepo.sendReaction(any(), any()))
+            .thenAnswer((_) async {});
+
+        chatBloc.add(SendReaction(123, '+1'));
+        await waitForState(chatBloc, (s) => s.myReactions.contains('123:+1'));
+
+        chatBloc.add(SendReaction(123, '+1'));
+        await waitForState(chatBloc, (s) => !s.myReactions.contains('123:+1'));
+
+        expect(chatBloc.state.myReactions.contains('123:+1'), isFalse);
+      });
+
+      test('empty reaction update clears message reactions', () async {
+        chatBloc.emit(ChatState(messages: [msg]));
+
+        final cleared = waitForState(
+          chatBloc,
+          (s) => s.messages.isNotEmpty && s.messages.first.reactions.isEmpty,
+        );
+        reactionUpdatesController.add(
+          ReactionUpdate(messageId: 'm1', reactions: []),
+        );
+        await cleared;
+
+        expect(chatBloc.state.messages.first.reactions, isEmpty);
       });
     });
   });
