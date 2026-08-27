@@ -39,9 +39,8 @@ void main() {
 
     when(() => mockRepo.messages).thenAnswer((_) => messagesController.stream);
     when(() => mockRepo.users).thenAnswer((_) => usersController.stream);
-    when(
-      () => mockRepo.connectionStatus,
-    ).thenAnswer((_) => connectionStatusController.stream);
+    when(() => mockRepo.connectionStatus)
+        .thenAnswer((_) => connectionStatusController.stream);
     when(() => mockRepo.disconnect()).thenAnswer((_) async {});
     when(() => mockRepo.dispose()).thenAnswer((_) {});
 
@@ -217,9 +216,8 @@ void main() {
       });
 
       test('handles unknown command as regular message', () async {
-        when(
-          () => mockRepo.sendMessage('/unknown foo'),
-        ).thenAnswer((_) async {});
+        when(() => mockRepo.sendMessage('/unknown foo'))
+            .thenAnswer((_) async {});
 
         chatBloc.add(const SendMessage('/unknown foo'));
 

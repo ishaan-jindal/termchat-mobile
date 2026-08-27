@@ -65,9 +65,8 @@ class RoomJoinHelper {
         context.go('/chat/$roomCode');
         return true;
       } else if (result.error == 'invalid_password') {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Wrong password')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Wrong password')));
         return false;
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

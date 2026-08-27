@@ -31,9 +31,8 @@ void main() {
       ];
 
       test('emits loading then loaded on success', () async {
-        when(
-          () => mockRepository.getActiveSessions(),
-        ).thenAnswer((_) async => sessions);
+        when(() => mockRepository.getActiveSessions())
+            .thenAnswer((_) async => sessions);
 
         final expected = [
           const RoomsState(isLoading: true),
@@ -46,9 +45,8 @@ void main() {
       });
 
       test('emits loading then error on failure', () async {
-        when(
-          () => mockRepository.getActiveSessions(),
-        ).thenThrow(Exception('Network error'));
+        when(() => mockRepository.getActiveSessions())
+            .thenThrow(Exception('Network error'));
 
         final expected = [
           const RoomsState(isLoading: true),

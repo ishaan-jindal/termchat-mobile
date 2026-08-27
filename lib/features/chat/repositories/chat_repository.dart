@@ -16,7 +16,7 @@ enum ConnectionStatus { disconnected, connecting, connected, reconnecting }
 abstract class ChatRepository {
   Future<void> connect(String roomCode, String nick, {String? password});
   Future<void> disconnect();
-  Future<void> sendMessage(String content);
+  Future<void> sendMessage(String content, {int? replyToId});
   Future<void> updateNickname(String nick);
   Future<void> updateColor(String color);
   Future<void> setPassword(String password);
@@ -129,13 +129,15 @@ class ChatRepositoryImpl implements ChatRepository {
             _usersController.add(msg.users!);
           }
         } else if (msg.type == 'reaction') {
-          if (msg.id != null && msg.reactions != null) {
+          if (msg.id != null) {
             _reactionUpdatesController.add(
               ReactionUpdate(
                 messageId: msg.id.toString(),
-                reactions: msg.reactions!
-                    .map((r) => Reaction(name: r.name, count: r.count))
-                    .toList(),
+                reactions:
+                    msg.reactions
+                        ?.map((r) => Reaction(name: r.name, count: r.count))
+                        .toList() ??
+                    const [],
               ),
             );
           }
@@ -240,9 +242,13 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<void> sendMessage(String content) async {
+  Future<void> sendMessage(String content, {int? replyToId}) async {
     if (_channel != null) {
-      final msg = BackendMessage(type: 'message', text: content);
+      final msg = BackendMessage(
+        type: 'message',
+        text: content,
+        replyToId: replyToId,
+      );
       _channel!.sink.add(jsonEncode(msg.toJson()));
     }
   }
