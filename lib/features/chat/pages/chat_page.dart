@@ -7,7 +7,9 @@ import '../widgets/chat_input_area.dart';
 import '../widgets/room_users_drawer.dart';
 import '../bloc/chat_bloc.dart';
 import '../repositories/chat_repository.dart';
+
 import 'package:go_router/go_router.dart';
+
 import '../managers/active_chats_manager.dart';
 import '../../settings/bloc/identity/identity_bloc.dart' as identity;
 import '../../../core/widgets/password_prompt_modal.dart';
@@ -61,9 +63,8 @@ class ChatPage extends StatelessWidget {
             );
           }
         } else if (state.error != null) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: ${state.error}')));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Error: ${state.error}')));
           if (!state.isConnected) {
             context.go('/');
           }
@@ -106,7 +107,11 @@ class ChatPage extends StatelessWidget {
                 ),
               const Expanded(child: MessageList()),
               ChatInputArea(
-                onSend: (text) {
+                replyTarget: state.replyingTo,
+                onCancelReply: () {
+                  context.read<ChatBloc>().add(ClearReplyTarget());
+                },
+                onSend: (text, replyToId) {
                   final trimmed = text.trim();
                   if (trimmed == '/quit') {
                     final roomCode =
@@ -117,7 +122,7 @@ class ChatPage extends StatelessWidget {
                     context.go('/');
                     return;
                   }
-                  context.read<ChatBloc>().add(SendMessage(text));
+                  context.read<ChatBloc>().add(SendMessage(text, replyToId));
                 },
                 onTyping: () {
                   context.read<ChatBloc>().add(SendTyping());

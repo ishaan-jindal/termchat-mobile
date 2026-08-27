@@ -26,10 +26,20 @@ class ConnectChat extends ChatEvent {
 
 class SendMessage extends ChatEvent {
   final String content;
-  const SendMessage(this.content);
+  final int? replyToId;
+  const SendMessage(this.content, [this.replyToId]);
   @override
-  List<Object?> get props => [content];
+  List<Object?> get props => [content, replyToId];
 }
+
+class SetReplyTarget extends ChatEvent {
+  final Message target;
+  const SetReplyTarget(this.target);
+  @override
+  List<Object?> get props => [target];
+}
+
+class ClearReplyTarget extends ChatEvent {}
 
 class UpdateNickname extends ChatEvent {
   final String nickname;
@@ -54,6 +64,14 @@ class SetRoomPassword extends ChatEvent {
 
 class SendTyping extends ChatEvent {}
 
+class SendReaction extends ChatEvent {
+  final int messageId;
+  final String name;
+  const SendReaction(this.messageId, this.name);
+  @override
+  List<Object?> get props => [messageId, name];
+}
+
 class _MessageReceived extends ChatEvent {
   final Message message;
   const _MessageReceived(this.message);
@@ -66,6 +84,13 @@ class _UsersUpdated extends ChatEvent {
   const _UsersUpdated(this.users);
   @override
   List<Object?> get props => [users];
+}
+
+class _ReactionUpdated extends ChatEvent {
+  final ReactionUpdate update;
+  const _ReactionUpdated(this.update);
+  @override
+  List<Object?> get props => [update];
 }
 
 class _ChatError extends ChatEvent {

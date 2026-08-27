@@ -4,8 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_constants.dart';
 import '../bloc/chat_bloc.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
-import '../../../core/utils/color_utils.dart';
 import 'chat_message_bubble.dart';
+import 'reaction_picker.dart';
+import 'swipe_to_reply.dart';
 
 class MessageList extends StatefulWidget {
   const MessageList({super.key});
@@ -16,11 +17,23 @@ class MessageList extends StatefulWidget {
 
 class _MessageListState extends State<MessageList> {
   final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _messageKeys = {};
 
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToMessage(String messageId) {
+    final key = _messageKeys[messageId];
+    if (key?.currentContext != null) {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   void _scrollToBottom() {
@@ -75,15 +88,70 @@ class _MessageListState extends State<MessageList> {
             final isMention =
                 myNick.isNotEmpty && msg.content.contains('@$myNick');
 
-            return ChatMessageBubble(
-              username: msg.senderNickname,
-              usernameColor: ColorUtils.parseHexColor(msg.senderColorHex),
-              message: msg.content,
+            final canReact =
+                !msg.isSystemMessage && int.tryParse(msg.id) != null;
+
+            final key = _messageKeys.putIfAbsent(msg.id, () => GlobalKey());
+
+            final bubble = ChatMessageBubble(
+              message: msg,
               isMention: isMention,
+              myReactions: state.myReactions,
+              onReact: canReact
+                  ? () => showReactionPicker(
+                      context,
+                      state.myReactions,
+                      msg.id,
+                      (name) => context.read<ChatBloc>().add(
+                        SendReaction(int.parse(msg.id), name),
+                      ),
+                    )
+                  : null,
+              onToggleReaction: canReact
+                  ? (name) => context.read<ChatBloc>().add(
+                      SendReaction(int.parse(msg.id), name),
+                    )
+                  : null,
+              onTapQuote: msg.replyToId != null && msg.replyToId! > 0
+                  ? () => _scrollToMessage(msg.replyToId.toString())
+                  : null,
+            );
+
+            final replyable = canReact;
+
+            return Container(
+              key: key,
+              child: replyable
+                  ? SwipeToReply(
+                      key: ValueKey('reply_${msg.id}'),
+                      onReply: () =>
+                          context.read<ChatBloc>().add(SetReplyTarget(msg)),
+                      background: _buildSwipeReplyBackground(context),
+                      child: bubble,
+                    )
+                  : bubble,
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildSwipeReplyBackground(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(left: AppConstants.spacing16),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.all(AppConstants.spacing8),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(AppConstants.radius12),
+          ),
+          child: Icon(Icons.reply, color: theme.colorScheme.primary),
+        ),
+      ),
     );
   }
 

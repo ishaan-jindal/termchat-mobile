@@ -27,9 +27,8 @@ void main() {
     group('LoadIdentity', () {
       test('emits loading then loaded on success', () async {
         final user = User(id: 'u1', nickname: 'Alice', colorHex: '#FF0000');
-        when(
-          () => mockRepository.getCurrentUser(),
-        ).thenAnswer((_) async => user);
+        when(() => mockRepository.getCurrentUser())
+            .thenAnswer((_) async => user);
 
         final expected = [
           isA<IdentityLoading>(),
@@ -42,9 +41,8 @@ void main() {
       });
 
       test('emits loading then error on failure', () async {
-        when(
-          () => mockRepository.getCurrentUser(),
-        ).thenThrow(Exception('Failed to load'));
+        when(() => mockRepository.getCurrentUser())
+            .thenThrow(Exception('Failed to load'));
 
         final expected = [
           isA<IdentityLoading>(),
@@ -64,15 +62,13 @@ void main() {
     group('UpdateNickname', () {
       test('updates nickname when state is IdentityLoaded', () async {
         final user = User(id: 'u1', nickname: 'Alice', colorHex: '#FF0000');
-        when(
-          () => mockRepository.getCurrentUser(),
-        ).thenAnswer((_) async => user);
+        when(() => mockRepository.getCurrentUser())
+            .thenAnswer((_) async => user);
 
         identityBloc.emit(IdentityLoaded(user));
 
-        when(
-          () => mockRepository.updateNickname('Bob'),
-        ).thenAnswer((_) async {});
+        when(() => mockRepository.updateNickname('Bob'))
+            .thenAnswer((_) async {});
 
         final expected = [
           isA<IdentityLoaded>().having(
@@ -98,9 +94,8 @@ void main() {
         final user = User(id: 'u1', nickname: 'Alice', colorHex: '#FF0000');
         identityBloc.emit(IdentityLoaded(user));
 
-        when(
-          () => mockRepository.updateNickname('Bob'),
-        ).thenThrow(Exception('Save failed'));
+        when(() => mockRepository.updateNickname('Bob'))
+            .thenThrow(Exception('Save failed'));
 
         final expected = [
           isA<IdentityError>().having(
@@ -121,9 +116,8 @@ void main() {
         final user = User(id: 'u1', nickname: 'Alice', colorHex: '#FF0000');
         identityBloc.emit(IdentityLoaded(user));
 
-        when(
-          () => mockRepository.updateColor('#00FF00'),
-        ).thenAnswer((_) async {});
+        when(() => mockRepository.updateColor('#00FF00'))
+            .thenAnswer((_) async {});
 
         final expected = [
           isA<IdentityLoaded>().having(
@@ -148,9 +142,8 @@ void main() {
         final user = User(id: 'u1', nickname: 'Alice', colorHex: '#FF0000');
         identityBloc.emit(IdentityLoaded(user));
 
-        when(
-          () => mockRepository.updateColor('#00FF00'),
-        ).thenThrow(Exception('Save failed'));
+        when(() => mockRepository.updateColor('#00FF00'))
+            .thenThrow(Exception('Save failed'));
 
         final expected = [
           isA<IdentityError>().having(

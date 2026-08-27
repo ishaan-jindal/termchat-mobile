@@ -8,22 +8,26 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/models/backend_message.dart';
 import '../../../data/models/backend_user_info.dart';
 import '../../../core/models/message.dart';
+import '../../../core/models/reaction.dart';
+import '../models/reaction_update.dart';
 
 enum ConnectionStatus { disconnected, connecting, connected, reconnecting }
 
 abstract class ChatRepository {
   Future<void> connect(String roomCode, String nick, {String? password});
   Future<void> disconnect();
-  Future<void> sendMessage(String content);
+  Future<void> sendMessage(String content, {int? replyToId});
   Future<void> updateNickname(String nick);
   Future<void> updateColor(String color);
   Future<void> setPassword(String password);
   Future<void> sendTyping();
+  Future<void> sendReaction(int messageId, String name);
   void dispose();
 
   Stream<Message> get messages;
   Stream<List<BackendUserInfo>> get users;
   Stream<ConnectionStatus> get connectionStatus;
+  Stream<ReactionUpdate> get reactionUpdates;
 }
 
 @Injectable(as: ChatRepository)
@@ -33,6 +37,8 @@ class ChatRepositoryImpl implements ChatRepository {
   final _usersController = StreamController<List<BackendUserInfo>>.broadcast();
   final _connectionStatusController =
       StreamController<ConnectionStatus>.broadcast();
+  final _reactionUpdatesController =
+      StreamController<ReactionUpdate>.broadcast();
 
   String? _roomCode;
   String? _nick;
@@ -48,6 +54,10 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Stream<List<BackendUserInfo>> get users => _usersController.stream;
+
+  @override
+  Stream<ReactionUpdate> get reactionUpdates =>
+      _reactionUpdatesController.stream;
 
   @override
   Stream<ConnectionStatus> get connectionStatus =>
@@ -117,6 +127,19 @@ class ChatRepositoryImpl implements ChatRepository {
         } else if (msg.type == 'users_list') {
           if (msg.users != null) {
             _usersController.add(msg.users!);
+          }
+        } else if (msg.type == 'reaction') {
+          if (msg.id != null) {
+            _reactionUpdatesController.add(
+              ReactionUpdate(
+                messageId: msg.id.toString(),
+                reactions:
+                    msg.reactions
+                        ?.map((r) => Reaction(name: r.name, count: r.count))
+                        .toList() ??
+                    const [],
+              ),
+            );
           }
         } else {
           _handleIncomingMessage(msg, _roomCode ?? '');
@@ -191,10 +214,13 @@ class ChatRepositoryImpl implements ChatRepository {
           ? DateTime.fromMillisecondsSinceEpoch(ts)
           : DateTime.now();
       final nick = backendMsg.nick ?? 'system';
+      final id =
+          backendMsg.id?.toString() ??
+          (ts != null
+              ? '${ts}_$nick'
+              : '${timestamp.millisecondsSinceEpoch}_$nick');
       final msg = Message(
-        id: ts != null
-            ? '${ts}_$nick'
-            : '${timestamp.millisecondsSinceEpoch}_$nick',
+        id: id,
         roomId: roomCode,
         senderId: nick,
         senderNickname: nick,
@@ -202,15 +228,27 @@ class ChatRepositoryImpl implements ChatRepository {
         content: backendMsg.text ?? '',
         timestamp: timestamp,
         isSystemMessage: backendMsg.type == 'system',
+        reactions:
+            backendMsg.reactions
+                ?.map((r) => Reaction(name: r.name, count: r.count))
+                .toList() ??
+            const [],
+        replyToId: backendMsg.replyToId,
+        replyToNick: backendMsg.replyToNick,
+        replyToText: backendMsg.replyToText,
       );
       _messagesController.add(msg);
     }
   }
 
   @override
-  Future<void> sendMessage(String content) async {
+  Future<void> sendMessage(String content, {int? replyToId}) async {
     if (_channel != null) {
-      final msg = BackendMessage(type: 'message', text: content);
+      final msg = BackendMessage(
+        type: 'message',
+        text: content,
+        replyToId: replyToId,
+      );
       _channel!.sink.add(jsonEncode(msg.toJson()));
     }
   }
@@ -248,6 +286,14 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<void> sendReaction(int messageId, String name) async {
+    if (_channel != null) {
+      final msg = BackendMessage(type: 'reaction', id: messageId, text: name);
+      _channel!.sink.add(jsonEncode(msg.toJson()));
+    }
+  }
+
+  @override
   Future<void> disconnect() async {
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
@@ -263,6 +309,7 @@ class ChatRepositoryImpl implements ChatRepository {
     _messagesController.close();
     _usersController.close();
     _connectionStatusController.close();
+    _reactionUpdatesController.close();
   }
 
   void _updateStatus(ConnectionStatus status) {

@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## Unreleased
+
+### Added
+- Message reactions: long-press a message to open a picker and tap a chip to toggle a reaction;
+  reactions show counts and highlight the ones you've selected, and the last reaction on a message can now be fully removed.
+  (by @ishaan-jindal)
+- Reply to messages by swiping right on a message, with haptic feedback;
+  the reply target is shown in the input area and cleared when the message is sent or canceled. (by @ishaan-jindal)
+- Terminal-style message bubbles: rounded surface with a sender-colored left accent stripe and a `> nick` prompt. (by @ishaan-jindal)
+- Adopted server-assigned message IDs and plumbed reaction/reply models end-to-end. (by @ishaan-jindal)
 
 ## [1.3.1] - 2026-07-10
 

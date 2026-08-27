@@ -25,6 +25,10 @@ void main() {
         message.content,
         message.timestamp,
         message.isSystemMessage,
+        message.reactions,
+        message.replyToId,
+        message.replyToNick,
+        message.replyToText,
       ]);
     });
 
