@@ -1,12 +1,88 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/notification_helper.dart';
 import '../bloc/settings/settings_bloc.dart';
 import 'settings_section_header.dart';
 
-class NotificationSettings extends StatelessWidget {
+class NotificationSettings extends StatefulWidget {
   const NotificationSettings({super.key});
+
+  @override
+  State<NotificationSettings> createState() => _NotificationSettingsState();
+}
+
+class _NotificationSettingsState extends State<NotificationSettings>
+    with WidgetsBindingObserver {
+  bool? _permissionGranted;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refreshPermission();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshPermission();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _refreshPermission() async {
+    final granted = await NotificationHelper.hasNotificationPermission();
+
+    if (mounted) {
+      setState(() => _permissionGranted = granted);
+    }
+  }
+
+  Future<void> _handleNotificationsToggle(bool enabled) async {
+    if (!enabled) {
+      context.read<SettingsBloc>().add(const ToggleMessageNotifications(false));
+
+      return;
+    }
+
+    final status = await Permission.notification.request();
+    final granted = status.isGranted;
+
+    if (!mounted) return;
+
+    if (granted) {
+      context.read<SettingsBloc>().add(const ToggleMessageNotifications(true));
+    } else {
+      context.read<SettingsBloc>().add(const ToggleMessageNotifications(false));
+
+      final messenger = ScaffoldMessenger.of(context);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Notification permission denied - mentions will not notify you.',
+            ),
+            action: status.isPermanentlyDenied
+                ? SnackBarAction(
+                    label: 'Open settings',
+                    onPressed: () => openAppSettings(),
+                  )
+                : null,
+          ),
+        );
+    }
+
+    setState(() => _permissionGranted = granted);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,11 +96,8 @@ class NotificationSettings extends StatelessWidget {
               context,
               'message notifications',
               state.messageNotificationsEnabled,
-              (enabled) {
-                context.read<SettingsBloc>().add(
-                  ToggleMessageNotifications(enabled),
-                );
-              },
+              (enabled) => _handleNotificationsToggle(enabled),
+              subtitle: _permissionSubtitle(),
             ),
             _buildSwitchRow(
               context,
@@ -38,6 +111,14 @@ class NotificationSettings extends StatelessWidget {
         );
       },
     );
+  }
+
+  String? _permissionSubtitle() {
+    if (_permissionGranted == null) return null;
+
+    return _permissionGranted!
+        ? 'permission granted'
+        : 'permission not granted · tap the switch to allow';
   }
 
   Widget _buildSwitchRow(
