@@ -113,6 +113,23 @@ void main() {
     });
 
     group('ToggleMessageNotifications', () {
+      test('enables notifications', () async {
+        when(() => mockRepository.setMessageNotifications(true))
+            .thenAnswer((_) async {});
+
+        final expected = [
+          isA<SettingsState>().having(
+            (s) => s.messageNotificationsEnabled,
+            'enabled',
+            true,
+          ),
+        ];
+
+        expectLater(settingsBloc.stream, emitsInOrder(expected));
+
+        settingsBloc.add(const ToggleMessageNotifications(true));
+      });
+
       test('disables notifications', () async {
         when(() => mockRepository.setMessageNotifications(false))
             .thenAnswer((_) async {});
@@ -128,6 +145,23 @@ void main() {
         expectLater(settingsBloc.stream, emitsInOrder(expected));
 
         settingsBloc.add(const ToggleMessageNotifications(false));
+      });
+
+      test('emits error on repository failure', () async {
+        when(() => mockRepository.setMessageNotifications(true))
+            .thenThrow(Exception('Save failed'));
+
+        final expected = [
+          isA<SettingsState>().having(
+            (s) => s.error,
+            'error',
+            'Exception: Save failed',
+          ),
+        ];
+
+        expectLater(settingsBloc.stream, emitsInOrder(expected));
+
+        settingsBloc.add(const ToggleMessageNotifications(true));
       });
     });
 

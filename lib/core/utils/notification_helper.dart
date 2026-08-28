@@ -38,8 +38,6 @@ class NotificationHelper {
           AndroidFlutterLocalNotificationsPlugin
         >()
         ?.createNotificationChannel(channel);
-
-    await requestNotificationPermission();
   }
 
   /// Requests the OS notification permission via permission_handler and
@@ -48,6 +46,15 @@ class NotificationHelper {
     final status = await Permission.notification.request();
 
     return status.isGranted;
+  }
+
+  /// Startup prompt: requests the permission only when it has not been
+  /// granted yet. Callers should schedule this after the first frame so the
+  /// dialog never blocks the initial UI.
+  static Future<void> requestNotificationPermissionIfNeeded() async {
+    if (await hasNotificationPermission()) return;
+
+    await requestNotificationPermission();
   }
 
   /// Reads the current OS notification permission state.

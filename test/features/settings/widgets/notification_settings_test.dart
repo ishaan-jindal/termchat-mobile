@@ -11,8 +11,6 @@ class MockSettingsRepository extends Mock implements SettingsRepository {}
 
 class FakePermissionHandlerPlatform extends PermissionHandlerPlatform {
   PermissionStatus status;
-  PermissionStatus? requestResult;
-  final List<Permission> requested = [];
   bool openAppSettingsCalled = false;
 
   FakePermissionHandlerPlatform(this.status);
@@ -26,11 +24,7 @@ class FakePermissionHandlerPlatform extends PermissionHandlerPlatform {
   Future<Map<Permission, PermissionStatus>> requestPermissions(
     List<Permission> permissions,
   ) async {
-    requested.addAll(permissions);
-
-    return {
-      for (final permission in permissions) permission: requestResult ?? status,
-    };
+    return {for (final permission in permissions) permission: status};
   }
 
   @override
