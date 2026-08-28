@@ -10,6 +10,7 @@ import '../../../data/models/backend_user_info.dart';
 import '../../../core/models/message.dart';
 import '../../../core/models/reaction.dart';
 import '../models/reaction_update.dart';
+import '../voice/voice_session.dart';
 
 enum ConnectionStatus { disconnected, connecting, connected, reconnecting }
 
@@ -22,12 +23,17 @@ abstract class ChatRepository {
   Future<void> setPassword(String password);
   Future<void> sendTyping();
   Future<void> sendReaction(int messageId, String name);
+  Future<void> joinVoice();
+  Future<void> leaveVoice();
+  Future<void> setVoiceTransmit(bool on);
   void dispose();
 
   Stream<Message> get messages;
   Stream<List<BackendUserInfo>> get users;
   Stream<ConnectionStatus> get connectionStatus;
   Stream<ReactionUpdate> get reactionUpdates;
+  Stream<bool> get voiceActive;
+  Stream<String> get voiceErrors;
 }
 
 @Injectable(as: ChatRepository)
@@ -39,10 +45,17 @@ class ChatRepositoryImpl implements ChatRepository {
       StreamController<ConnectionStatus>.broadcast();
   final _reactionUpdatesController =
       StreamController<ReactionUpdate>.broadcast();
+  final _voiceActiveController = StreamController<bool>.broadcast();
+  final _voiceErrorsController = StreamController<String>.broadcast();
 
   String? _roomCode;
   String? _nick;
   String? _password;
+
+  VoiceSession? _voice;
+  bool _voiceWanted = false;
+  bool _voiceRejoinPending = false;
+  Completer<String>? _mediaTokenCompleter;
 
   ConnectionStatus _connectionStatus = ConnectionStatus.disconnected;
   bool _isDisposed = false;
@@ -58,6 +71,12 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Stream<ReactionUpdate> get reactionUpdates =>
       _reactionUpdatesController.stream;
+
+  @override
+  Stream<bool> get voiceActive => _voiceActiveController.stream;
+
+  @override
+  Stream<String> get voiceErrors => _voiceErrorsController.stream;
 
   @override
   Stream<ConnectionStatus> get connectionStatus =>
@@ -101,6 +120,21 @@ class ChatRepositoryImpl implements ChatRepository {
         if (_isDisposed) return;
         final Map<String, dynamic> json = jsonDecode(data as String);
         final msg = BackendMessage.fromJson(json);
+
+        if (msg.type == 'media_token') {
+          final completer = _mediaTokenCompleter;
+          _mediaTokenCompleter = null;
+
+          if (completer != null && !completer.isCompleted) {
+            if (msg.token != null && msg.token!.isNotEmpty) {
+              completer.complete(msg.token!);
+            } else {
+              completer.completeError(StateError('empty media token'));
+            }
+          }
+
+          return;
+        }
 
         if (msg.type == 'error' && msg.text == 'invalid_password') {
           if (!completer.isCompleted) {
@@ -181,6 +215,8 @@ class ChatRepositoryImpl implements ChatRepository {
       return;
     }
 
+    _closeVoiceSession();
+
     _updateStatus(ConnectionStatus.reconnecting);
     _scheduleReconnect();
   }
@@ -199,6 +235,7 @@ class ChatRepositoryImpl implements ChatRepository {
 
       try {
         await _establishConnection();
+        await _maybeRejoinVoice();
       } catch (e) {
         _scheduleReconnect();
       }
@@ -294,7 +331,126 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<void> joinVoice() async {
+    if (_voice != null) return;
+
+    if (_channel == null ||
+        _connectionStatus != ConnectionStatus.connected ||
+        _roomCode == null) {
+      throw StateError('not connected');
+    }
+
+    _voiceWanted = true;
+
+    try {
+      final token = await _requestMediaToken();
+      final session = await VoiceSession.connect(
+        mediaUrl: AppConstants.mediaWsBaseUrl,
+        room: _roomCode!,
+        token: token,
+      );
+
+      if (_isDisposed) {
+        await session.dispose();
+
+        return;
+      }
+
+      _voice = session;
+      session.events.listen(_onVoiceEvent);
+      _emitVoiceActive(true);
+    } catch (_) {
+      _voiceWanted = false;
+
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> leaveVoice() async {
+    _voiceWanted = false;
+    await _closeVoiceSession();
+  }
+
+  @override
+  Future<void> setVoiceTransmit(bool on) async {
+    await _voice?.setTransmitting(on);
+  }
+
+  Future<String> _requestMediaToken() async {
+    final completer = Completer<String>();
+    _mediaTokenCompleter = completer;
+
+    _channel!.sink.add(
+      jsonEncode(BackendMessage(type: 'media_token').toJson()),
+    );
+
+    final token = await completer.future.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        _mediaTokenCompleter = null;
+        throw TimeoutException('media token request timed out');
+      },
+    );
+
+    return token;
+  }
+
+  Future<void> _closeVoiceSession() async {
+    final session = _voice;
+    _voice = null;
+
+    if (session != null) {
+      await session.dispose();
+      _emitVoiceActive(false);
+    }
+  }
+
+  void _onVoiceEvent(VoiceSessionEvent event) {
+    if (event is VoiceSessionError) {
+      if (!_voiceErrorsController.isClosed) {
+        _voiceErrorsController.add(event.message);
+      }
+    }
+
+    if (event is VoiceSessionEnded) {
+      final wasActive = _voice != null;
+      _voice = null;
+      _emitVoiceActive(false);
+
+      if (wasActive &&
+          _voiceWanted &&
+          !_voiceRejoinPending &&
+          _connectionStatus == ConnectionStatus.connected) {
+        _voiceRejoinPending = true;
+        Timer(const Duration(seconds: 1), () {
+          _voiceRejoinPending = false;
+          _maybeRejoinVoice();
+        });
+      }
+    }
+  }
+
+  Future<void> _maybeRejoinVoice() async {
+    if (_isDisposed || !_voiceWanted || _voice != null) return;
+
+    try {
+      await joinVoice();
+    } catch (_) {
+      _voiceWanted = false;
+    }
+  }
+
+  void _emitVoiceActive(bool active) {
+    if (!_voiceActiveController.isClosed) {
+      _voiceActiveController.add(active);
+    }
+  }
+
+  @override
   Future<void> disconnect() async {
+    _voiceWanted = false;
+    await _closeVoiceSession();
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _updateStatus(ConnectionStatus.disconnected);
@@ -310,6 +466,8 @@ class ChatRepositoryImpl implements ChatRepository {
     _usersController.close();
     _connectionStatusController.close();
     _reactionUpdatesController.close();
+    _voiceActiveController.close();
+    _voiceErrorsController.close();
   }
 
   void _updateStatus(ConnectionStatus status) {

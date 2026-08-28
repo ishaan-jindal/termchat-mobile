@@ -10,6 +10,9 @@ class ChatState extends Equatable {
   final ConnectionStatus connectionStatus;
   final Set<String> myReactions;
   final Message? replyingTo;
+  final bool isVoiceActive;
+  final bool isVoiceTransmitting;
+  final String? voiceError;
 
   const ChatState({
     this.messages = const [],
@@ -21,6 +24,9 @@ class ChatState extends Equatable {
     this.connectionStatus = ConnectionStatus.disconnected,
     this.myReactions = const {},
     this.replyingTo,
+    this.isVoiceActive = false,
+    this.isVoiceTransmitting = false,
+    this.voiceError,
   });
 
   ChatState copyWith({
@@ -35,6 +41,9 @@ class ChatState extends Equatable {
     Set<String>? myReactions,
     Message? replyingTo,
     bool clearReplyingTo = false,
+    bool? isVoiceActive,
+    bool? isVoiceTransmitting,
+    String? voiceError,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -46,6 +55,9 @@ class ChatState extends Equatable {
       connectionStatus: connectionStatus ?? this.connectionStatus,
       myReactions: myReactions ?? this.myReactions,
       replyingTo: clearReplyingTo ? null : (replyingTo ?? this.replyingTo),
+      isVoiceActive: isVoiceActive ?? this.isVoiceActive,
+      isVoiceTransmitting: isVoiceTransmitting ?? this.isVoiceTransmitting,
+      voiceError: voiceError ?? this.voiceError,
     );
   }
 
@@ -60,5 +72,8 @@ class ChatState extends Equatable {
     connectionStatus,
     myReactions,
     replyingTo,
+    isVoiceActive,
+    isVoiceTransmitting,
+    voiceError,
   ];
 }

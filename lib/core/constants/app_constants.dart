@@ -10,6 +10,7 @@ class AppConstants {
   static const String apiHost = 'termchat.sacred99.online';
   static const String apiBaseUrl = 'https://$apiHost';
   static const String wsBaseUrl = 'wss://$apiHost/ws';
+  static const String mediaWsBaseUrl = 'wss://$apiHost/media';
 
   // ── Spacing ──
   static const double spacing4 = 4;

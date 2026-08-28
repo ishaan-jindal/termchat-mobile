@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../widgets/chat_top_bar.dart';
 import '../widgets/message_list.dart';
 import '../widgets/chat_input_area.dart';
 import '../widgets/room_users_drawer.dart';
+import '../widgets/voice_control_bar.dart';
 import '../bloc/chat_bloc.dart';
 import '../repositories/chat_repository.dart';
 
@@ -30,13 +32,43 @@ class ChatPage extends StatelessWidget {
     );
   }
 
+  Future<void> _toggleVoice(BuildContext context, bool active) async {
+    final bloc = context.read<ChatBloc>();
+
+    if (active) {
+      bloc.add(StopVoice());
+
+      return;
+    }
+
+    final status = await Permission.microphone.request();
+
+    if (!context.mounted) return;
+
+    if (status.isGranted) {
+      bloc.add(StartVoice());
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Microphone permission is required for voice chat'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<ChatBloc, ChatState>(
       listenWhen: (previous, current) =>
-          previous.error != current.error && current.error != null,
+          (previous.error != current.error && current.error != null) ||
+          (previous.voiceError != current.voiceError &&
+              current.voiceError != null),
       listener: (context, state) async {
-        if (state.error == 'invalid_password') {
+        if (state.voiceError != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Voice: ${state.voiceError}')));
+        } else if (state.error == 'invalid_password') {
           final password = await showModalBottomSheet<String>(
             context: context,
             isScrollControlled: true,
@@ -79,6 +111,8 @@ class ChatPage extends StatelessWidget {
             roomName: roomName,
             usersCount: usersCount,
             onOpenDrawer: () => _openUsersDrawer(context, roomName),
+            voiceActive: state.isVoiceActive,
+            onToggleVoice: () => _toggleVoice(context, state.isVoiceActive),
           ),
           body: Column(
             children: [
@@ -106,6 +140,16 @@ class ChatPage extends StatelessWidget {
                   ),
                 ),
               const Expanded(child: MessageList()),
+              if (state.isVoiceActive)
+                VoiceControlBar(
+                  isTransmitting: state.isVoiceTransmitting,
+                  speakersCount: state.users
+                      .where((u) => u.voiceId != 0)
+                      .length,
+                  onSetTransmitting: (on) {
+                    context.read<ChatBloc>().add(SetVoiceTransmit(on));
+                  },
+                ),
               ChatInputArea(
                 replyTarget: state.replyingTo,
                 onCancelReply: () {

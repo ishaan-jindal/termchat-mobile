@@ -40,6 +40,8 @@ void main() {
   late StreamController<List<BackendUserInfo>> usersController;
   late StreamController<ConnectionStatus> connectionStatusController;
   late StreamController<ReactionUpdate> reactionUpdatesController;
+  late StreamController<bool> voiceActiveController;
+  late StreamController<String> voiceErrorsController;
 
   setUp(() {
     mockRepo = MockChatRepository();
@@ -52,6 +54,8 @@ void main() {
     usersController = StreamController<List<BackendUserInfo>>.broadcast();
     connectionStatusController = StreamController<ConnectionStatus>.broadcast();
     reactionUpdatesController = StreamController<ReactionUpdate>.broadcast();
+    voiceActiveController = StreamController<bool>.broadcast();
+    voiceErrorsController = StreamController<String>.broadcast();
 
     when(() => mockRepo.messages).thenAnswer((_) => messagesController.stream);
     when(() => mockRepo.users).thenAnswer((_) => usersController.stream);
@@ -59,6 +63,10 @@ void main() {
         .thenAnswer((_) => connectionStatusController.stream);
     when(() => mockRepo.reactionUpdates)
         .thenAnswer((_) => reactionUpdatesController.stream);
+    when(() => mockRepo.voiceActive)
+        .thenAnswer((_) => voiceActiveController.stream);
+    when(() => mockRepo.voiceErrors)
+        .thenAnswer((_) => voiceErrorsController.stream);
     when(() => mockRepo.disconnect()).thenAnswer((_) async {});
     when(() => mockRepo.dispose()).thenAnswer((_) {});
 
@@ -71,6 +79,8 @@ void main() {
     await usersController.close();
     await connectionStatusController.close();
     await reactionUpdatesController.close();
+    await voiceActiveController.close();
+    await voiceErrorsController.close();
   });
 
   /// Helper: triggers the connect flow so stream subscriptions are active.
@@ -416,6 +426,63 @@ void main() {
         await cleared;
 
         expect(chatBloc.state.messages.first.reactions, isEmpty);
+      });
+    });
+
+    group('Voice', () {
+      setUp(() async {
+        await connectToRoom();
+      });
+
+      test('StartVoice joins the voice session', () async {
+        when(() => mockRepo.joinVoice()).thenAnswer((_) async {});
+
+        chatBloc.add(StartVoice());
+
+        await untilCalled(() => mockRepo.joinVoice());
+        verify(() => mockRepo.joinVoice()).called(1);
+      });
+
+      test('StartVoice surfaces errors into voiceError', () async {
+        when(() => mockRepo.joinVoice()).thenThrow(Exception('no mic'));
+
+        chatBloc.add(StartVoice());
+        await waitForState(chatBloc, (s) => s.voiceError != null);
+
+        expect(chatBloc.state.voiceError, 'Exception: no mic');
+      });
+
+      test('StopVoice leaves the voice session', () async {
+        when(() => mockRepo.leaveVoice()).thenAnswer((_) async {});
+
+        chatBloc.add(StopVoice());
+
+        await untilCalled(() => mockRepo.leaveVoice());
+        verify(() => mockRepo.leaveVoice()).called(1);
+      });
+
+      test('SetVoiceTransmit toggles transmitting state', () async {
+        when(() => mockRepo.setVoiceTransmit(true)).thenAnswer((_) async {});
+
+        chatBloc.add(const SetVoiceTransmit(true));
+
+        await waitForState(chatBloc, (s) => s.isVoiceTransmitting);
+        verify(() => mockRepo.setVoiceTransmit(true)).called(1);
+      });
+
+      test('voiceActive stream mirrors into state', () async {
+        voiceActiveController.add(true);
+        await waitForState(chatBloc, (s) => s.isVoiceActive);
+
+        voiceActiveController.add(false);
+        await waitForState(chatBloc, (s) => !s.isVoiceActive);
+
+        expect(chatBloc.state.isVoiceTransmitting, isFalse);
+      });
+
+      test('voiceErrors stream surfaces as voiceError', () async {
+        voiceErrorsController.add('voice dropped');
+        await waitForState(chatBloc, (s) => s.voiceError == 'voice dropped');
       });
     });
   });
