@@ -22,6 +22,12 @@ void main() async {
   final settingsBloc = getIt<SettingsBloc>()..add(LoadSettings());
 
   runApp(TermchatApp(identityBloc: identityBloc, settingsBloc: settingsBloc));
+
+  // Prompt for notification permission after the first frame so the system
+  // dialog never covers a blank screen or blocks startup.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    NotificationHelper.requestNotificationPermissionIfNeeded();
+  });
 }
 
 class TermchatApp extends StatelessWidget {

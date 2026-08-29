@@ -26,6 +26,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   StreamSubscription<List<BackendUserInfo>>? _usersSubscription;
   StreamSubscription<ReactionUpdate>? _reactionSubscription;
   StreamSubscription<ConnectionStatus>? _connectionStatusSubscription;
+  StreamSubscription<bool>? _voiceActiveSubscription;
+  StreamSubscription<String>? _voiceErrorSubscription;
 
   ChatBloc(this._repository, this._identityBloc, this._settingsBloc)
     : super(const ChatState()) {
@@ -38,10 +40,15 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<SetRoomPassword>(_onSetRoomPassword);
     on<SendTyping>(_onSendTyping);
     on<SendReaction>(_onSendReaction);
+    on<StartVoice>(_onStartVoice);
+    on<StopVoice>(_onStopVoice);
+    on<SetVoiceTransmit>(_onSetVoiceTransmit);
     on<_MessageReceived>(_onMessageReceived);
     on<_UsersUpdated>(_onUsersUpdated);
     on<_ReactionUpdated>(_onReactionUpdated);
     on<_ChatError>(_onChatError);
+    on<_VoiceActiveChanged>(_onVoiceActiveChanged);
+    on<_VoiceError>(_onVoiceError);
     on<DisconnectChat>(_onDisconnectChat);
     on<_ConnectionStatusChanged>(_onConnectionStatusChanged);
   }
@@ -72,6 +79,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
       _reactionSubscription = _repository.reactionUpdates.listen(
         (update) => add(_ReactionUpdated(update)),
+        onError: (_) {},
+      );
+
+      await _voiceActiveSubscription?.cancel();
+      await _voiceErrorSubscription?.cancel();
+
+      _voiceActiveSubscription = _repository.voiceActive.listen(
+        (active) => add(_VoiceActiveChanged(active)),
+        onError: (_) {},
+      );
+
+      _voiceErrorSubscription = _repository.voiceErrors.listen(
+        (error) => add(_VoiceError(error)),
         onError: (_) {},
       );
 
@@ -224,6 +244,50 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     }
   }
 
+  Future<void> _onStartVoice(StartVoice event, Emitter<ChatState> emit) async {
+    try {
+      await _repository.joinVoice();
+    } catch (e) {
+      emit(state.copyWith(voiceError: e.toString()));
+    }
+  }
+
+  Future<void> _onStopVoice(StopVoice event, Emitter<ChatState> emit) async {
+    try {
+      await _repository.leaveVoice();
+    } catch (e) {
+      emit(state.copyWith(voiceError: e.toString()));
+    }
+  }
+
+  Future<void> _onSetVoiceTransmit(
+    SetVoiceTransmit event,
+    Emitter<ChatState> emit,
+  ) async {
+    try {
+      await _repository.setVoiceTransmit(event.on);
+      emit(state.copyWith(isVoiceTransmitting: event.on));
+    } catch (e) {
+      emit(state.copyWith(voiceError: e.toString()));
+    }
+  }
+
+  void _onVoiceActiveChanged(
+    _VoiceActiveChanged event,
+    Emitter<ChatState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        isVoiceActive: event.active,
+        isVoiceTransmitting: event.active ? state.isVoiceTransmitting : false,
+      ),
+    );
+  }
+
+  void _onVoiceError(_VoiceError event, Emitter<ChatState> emit) {
+    emit(state.copyWith(voiceError: event.error));
+  }
+
   void _onMessageReceived(_MessageReceived event, Emitter<ChatState> emit) {
     final updatedMessages = List<Message>.from(state.messages)
       ..add(event.message);
@@ -285,10 +349,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     await _usersSubscription?.cancel();
     await _reactionSubscription?.cancel();
     await _connectionStatusSubscription?.cancel();
+    await _voiceActiveSubscription?.cancel();
+    await _voiceErrorSubscription?.cancel();
     _messageSubscription = null;
     _usersSubscription = null;
     _reactionSubscription = null;
     _connectionStatusSubscription = null;
+    _voiceActiveSubscription = null;
+    _voiceErrorSubscription = null;
     await _repository.disconnect();
     emit(const ChatState());
   }
@@ -338,6 +406,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     _usersSubscription?.cancel();
     _reactionSubscription?.cancel();
     _connectionStatusSubscription?.cancel();
+    _voiceActiveSubscription?.cancel();
+    _voiceErrorSubscription?.cancel();
     _repository.dispose();
     return super.close();
   }

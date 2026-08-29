@@ -102,6 +102,31 @@ class _ChatError extends ChatEvent {
 
 class DisconnectChat extends ChatEvent {}
 
+class StartVoice extends ChatEvent {}
+
+class StopVoice extends ChatEvent {}
+
+class SetVoiceTransmit extends ChatEvent {
+  final bool on;
+  const SetVoiceTransmit(this.on);
+  @override
+  List<Object?> get props => [on];
+}
+
+class _VoiceActiveChanged extends ChatEvent {
+  final bool active;
+  const _VoiceActiveChanged(this.active);
+  @override
+  List<Object?> get props => [active];
+}
+
+class _VoiceError extends ChatEvent {
+  final String error;
+  const _VoiceError(this.error);
+  @override
+  List<Object?> get props => [error];
+}
+
 class _ConnectionStatusChanged extends ChatEvent {
   final ConnectionStatus status;
   const _ConnectionStatusChanged(this.status);

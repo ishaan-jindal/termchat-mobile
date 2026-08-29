@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class NotificationHelper {
   NotificationHelper._();
@@ -14,9 +15,9 @@ class NotificationHelper {
         InitializationSettings(
           android: initializationSettingsAndroid,
           iOS: DarwinInitializationSettings(
-            requestAlertPermission: true,
-            requestSoundPermission: true,
-            requestBadgePermission: true,
+            requestAlertPermission: false,
+            requestSoundPermission: false,
+            requestBadgePermission: false,
           ),
         );
 
@@ -37,13 +38,30 @@ class NotificationHelper {
           AndroidFlutterLocalNotificationsPlugin
         >()
         ?.createNotificationChannel(channel);
+  }
 
-    // Request notification permission for Android 13+
-    await _localNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestNotificationsPermission();
+  /// Requests the OS notification permission via permission_handler and
+  /// reports whether it was granted.
+  static Future<bool> requestNotificationPermission() async {
+    final status = await Permission.notification.request();
+
+    return status.isGranted;
+  }
+
+  /// Startup prompt: requests the permission only when it has not been
+  /// granted yet. Callers should schedule this after the first frame so the
+  /// dialog never blocks the initial UI.
+  static Future<void> requestNotificationPermissionIfNeeded() async {
+    if (await hasNotificationPermission()) return;
+
+    await requestNotificationPermission();
+  }
+
+  /// Reads the current OS notification permission state.
+  static Future<bool> hasNotificationPermission() async {
+    final status = await Permission.notification.status;
+
+    return status.isGranted;
   }
 
   static Future<void> showMentionNotification({

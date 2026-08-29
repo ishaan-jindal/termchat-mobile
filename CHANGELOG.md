@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the reply target is shown in the input area and cleared when the message is sent or canceled. (by @ishaan-jindal)
 - Terminal-style message bubbles: rounded surface with a sender-colored left accent stripe and a `> nick` prompt. (by @ishaan-jindal)
 - Adopted server-assigned message IDs and plumbed reaction/reply models end-to-end. (by @ishaan-jindal)
+- Push-to-talk voice chat: join a room's voice session from the chat top bar, hold the mic button to talk (or lock it on for hands-free), and see `[vc]` badges next to users in voice. Audio streams as 16 kHz mono PCM over the `/media` socket, is mixed per speaker, uses echo cancellation, and automatically rejoins if the voice connection drops. (by @ishaan-jindal)
+
+### Changed
+- Notification permission is now requested via `permission_handler` after the first frame; the Settings panel shows the OS permission state and re-requests permission when you turn on message notifications. (by @ishaan-jindal)
+
+### Fixed
+- The Android 13+ notification permission prompt now actually appears (`POST_NOTIFICATIONS` is declared in the manifest; previously the request silently failed). (by @ishaan-jindal)
 
 ## [1.3.1] - 2026-07-10
 

@@ -11,6 +11,7 @@ void main() {
           'joined_at': 12345,
           'typing': true,
           'is_host': false,
+          'voice_id': 42,
         };
 
         final info = BackendUserInfo.fromJson(json);
@@ -20,6 +21,7 @@ void main() {
         expect(info.joinedAt, 12345);
         expect(info.typing, isTrue);
         expect(info.isHost, isFalse);
+        expect(info.voiceId, 42);
       });
 
       test('uses defaults for missing fields', () {
@@ -30,6 +32,7 @@ void main() {
         expect(info.joinedAt, 0);
         expect(info.typing, isFalse);
         expect(info.isHost, isFalse);
+        expect(info.voiceId, 0);
       });
     });
 
@@ -51,6 +54,28 @@ void main() {
           'is_host': false,
         });
       });
+
+      test('omits voice_id when zero and includes it otherwise', () {
+        final silent = BackendUserInfo(
+          nick: 'A',
+          color: '#000',
+          joinedAt: 0,
+          typing: false,
+          isHost: false,
+        );
+
+        final talking = BackendUserInfo(
+          nick: 'A',
+          color: '#000',
+          joinedAt: 0,
+          typing: false,
+          isHost: false,
+          voiceId: 7,
+        );
+
+        expect(silent.toJson().containsKey('voice_id'), isFalse);
+        expect(talking.toJson()['voice_id'], 7);
+      });
     });
 
     test('round-trip preserves values', () {
@@ -70,6 +95,7 @@ void main() {
       expect(reconstructed.joinedAt, original.joinedAt);
       expect(reconstructed.typing, original.typing);
       expect(reconstructed.isHost, original.isHost);
+      expect(reconstructed.voiceId, original.voiceId);
     });
   });
 }

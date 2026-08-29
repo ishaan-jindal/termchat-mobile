@@ -78,6 +78,7 @@ class RoomUsersDrawer extends StatelessWidget {
                       color: ColorUtils.parseHexColor(user.color),
                       isHost: user.isHost,
                       isTyping: user.typing,
+                      isInVoice: user.voiceId != 0,
                       metaText: '· joined ${_formatJoinTime(user.joinedAt)}',
                     ),
                   );
@@ -116,6 +117,7 @@ class RoomUsersDrawer extends StatelessWidget {
     required Color color,
     bool isHost = false,
     bool isTyping = false,
+    bool isInVoice = false,
     required String metaText,
   }) {
     final textTheme = Theme.of(context).textTheme;
@@ -183,6 +185,37 @@ class RoomUsersDrawer extends StatelessWidget {
                         color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 9,
                       ),
+                    ),
+                  ),
+                ],
+                if (isInVoice) ...[
+                  const SizedBox(width: AppConstants.spacing4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).dividerColor,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.mic,
+                          size: 9,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          'vc',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 9,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

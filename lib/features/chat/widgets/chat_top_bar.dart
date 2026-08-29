@@ -6,12 +6,16 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
   final String roomName;
   final int usersCount;
   final VoidCallback onOpenDrawer;
+  final bool voiceActive;
+  final VoidCallback? onToggleVoice;
 
   const ChatTopBar({
     super.key,
     required this.roomName,
     required this.usersCount,
     required this.onOpenDrawer,
+    this.voiceActive = false,
+    this.onToggleVoice,
   });
 
   @override
@@ -55,9 +59,27 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ],
             ),
-            GestureDetector(
-              onTap: onOpenDrawer,
-              child: Text('$usersCount users ›', style: textTheme.bodySmall),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onToggleVoice != null)
+                  IconButton(
+                    onPressed: onToggleVoice,
+                    tooltip: voiceActive ? 'Leave voice' : 'Join voice',
+                    icon: Icon(voiceActive ? Icons.mic : Icons.mic_none),
+                    color: voiceActive
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                const SizedBox(width: AppConstants.spacing8),
+                GestureDetector(
+                  onTap: onOpenDrawer,
+                  child: Text(
+                    '$usersCount users ›',
+                    style: textTheme.bodySmall,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
