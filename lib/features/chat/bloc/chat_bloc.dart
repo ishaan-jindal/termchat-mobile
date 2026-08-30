@@ -145,7 +145,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
             senderId: 'system',
             senderNickname: 'system',
             senderColorHex: '#888888',
-            content: 'Commands: /help /clear /nick /color /password /quit',
+            content: 'Commands: /help /clear /nick /color /password',
             timestamp: DateTime.now(),
             isSystemMessage: true,
           );

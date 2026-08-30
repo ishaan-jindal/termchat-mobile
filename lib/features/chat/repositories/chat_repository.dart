@@ -53,6 +53,7 @@ class ChatRepositoryImpl implements ChatRepository {
   String? _password;
 
   VoiceSession? _voice;
+  StreamSubscription<VoiceSessionEvent>? _voiceEventSub;
   bool _voiceWanted = false;
   bool _voiceRejoinPending = false;
   Completer<String>? _mediaTokenCompleter;
@@ -357,7 +358,7 @@ class ChatRepositoryImpl implements ChatRepository {
       }
 
       _voice = session;
-      session.events.listen(_onVoiceEvent);
+      _voiceEventSub = session.events.listen(_onVoiceEvent);
       _emitVoiceActive(true);
     } catch (_) {
       _voiceWanted = false;
@@ -399,6 +400,9 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> _closeVoiceSession() async {
     final session = _voice;
     _voice = null;
+
+    await _voiceEventSub?.cancel();
+    _voiceEventSub = null;
 
     if (session != null) {
       await session.dispose();
