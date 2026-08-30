@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Push-to-talk voice chat: join a room's voice session from the chat top bar, hold the mic button to talk (or lock it on for hands-free), and see `[vc]` badges next to users in voice. Audio streams as 16 kHz mono PCM over the `/media` socket, is mixed per speaker, uses echo cancellation, and automatically rejoins if the voice connection drops. (by @ishaan-jindal)
 
 ### Changed
+- App version is now read from `pubspec.yaml` at runtime via `package_info_plus`, eliminating the risk of the displayed version falling out of sync with the build. (by @ishaan-jindal)
 - Notification permission is now requested via `permission_handler` after the first frame; the Settings panel shows the OS permission state and re-requests permission when you turn on message notifications. (by @ishaan-jindal)
 
 ### Fixed

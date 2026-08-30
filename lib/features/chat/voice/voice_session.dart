@@ -41,6 +41,7 @@ class VoiceSession {
   bool _playerStarted = false;
   bool _recorderOpened = false;
   bool _channelClosed = false;
+  bool _captureInProgress = false;
 
   final ValueNotifier<bool> _receiving = ValueNotifier(false);
 
@@ -83,8 +84,8 @@ class VoiceSession {
       );
 
       await session._handshake.future.timeout(const Duration(seconds: 10));
-      await session._startPlayback();
-      await session._openRecorder();
+      await session._startPlayback().timeout(const Duration(seconds: 5));
+      await session._openRecorder().timeout(const Duration(seconds: 5));
 
       session._playoutFuture = session._runPlayout();
 
@@ -166,8 +167,8 @@ class VoiceSession {
   }
 
   Future<void> _openRecorder() async {
-    _recorderOpened = true;
     await _recorder.openRecorder();
+    _recorderOpened = true;
   }
 
   /// Pull-driven playout loop: feeds one mixed chunk as soon as the player
@@ -181,7 +182,8 @@ class VoiceSession {
       try {
         await _player.feedUint8FromStream(mixed);
       } catch (_) {
-        break;
+        if (_disposed) break;
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       }
     }
   }
@@ -190,19 +192,22 @@ class VoiceSession {
   /// over the socket.
   Future<void> setTransmitting(bool on) async {
     if (on == _transmitting) return;
+    if (_captureInProgress) return;
 
     _transmitting = on;
+    _captureInProgress = true;
 
-    if (on) {
-      try {
+    try {
+      if (on) {
         await _startCapture();
-      } catch (_) {
-        _transmitting = false;
-
-        rethrow;
+      } else {
+        await _stopCapture();
       }
-    } else {
-      await _stopCapture();
+    } catch (_) {
+      _transmitting = false;
+      rethrow;
+    } finally {
+      _captureInProgress = false;
     }
   }
 
