@@ -39,6 +39,17 @@ Create a room, share a code, and start chatting instantly. Zero setup, zero trac
 
 ---
 
+## Join the Closed Test
+
+The Android app is currently available through a Google Play closed test. To see and install it, use the **same Google account** for both steps:
+
+1. Join the [termchat testers Google Group](https://groups.google.com/g/termchat-testers).
+2. Open [termchat on Google Play](https://play.google.com/store/apps/details?id=tech.ishaanjindal.termchat) and install the app.
+
+You must join the testers Google Group before the Play Store listing becomes available to your account.
+
+---
+
 ## How It Works
 
 ### Room Lifecycle
