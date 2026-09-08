@@ -4,6 +4,9 @@ import 'package:permission_handler/permission_handler.dart';
 class NotificationHelper {
   NotificationHelper._();
 
+  /// Invoked when a notification is tapped, with the room code payload.
+  static void Function(String? roomCode)? onNotificationTap;
+
   static final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -23,6 +26,12 @@ class NotificationHelper {
 
     await _localNotificationsPlugin.initialize(
       settings: initializationSettings,
+      onDidReceiveNotificationResponse: (response) {
+        final roomCode = response.payload;
+        if (roomCode != null && roomCode.isNotEmpty) {
+          onNotificationTap?.call(roomCode);
+        }
+      },
     );
 
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -64,6 +73,10 @@ class NotificationHelper {
     return status.isGranted;
   }
 
+  /// Monotonic notification id so two mentions in the same second never
+  /// overwrite each other (the old `msSinceEpoch ~/ 1000` collided).
+  static int _nextNotificationId = 0;
+
   static Future<void> showMentionNotification({
     required String roomName,
     required String sender,
@@ -77,18 +90,21 @@ class NotificationHelper {
               'Notifications for when you are mentioned in a room.',
           importance: Importance.max,
           priority: Priority.high,
-          ticker: 'ticker',
+          ticker: 'New mention',
         );
 
     const NotificationDetails notificationDetails = NotificationDetails(
       android: androidNotificationDetails,
     );
 
+    _nextNotificationId++;
+
     await _localNotificationsPlugin.show(
-      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      id: _nextNotificationId,
       title: 'Mentioned in $roomName',
       body: '$sender: $content',
       notificationDetails: notificationDetails,
+      payload: roomName,
     );
   }
 }
