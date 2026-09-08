@@ -40,10 +40,14 @@ class HomePage extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('rooms online now', style: textTheme.bodySmall),
-                      GestureDetector(
-                        onTap: () {
+                      TextButton(
+                        onPressed: () {
                           context.read<RoomsBloc>().add(LoadActiveSessions());
                         },
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(48, 48),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
                         child: Text('refresh', style: textTheme.bodySmall),
                       ),
                     ],
@@ -69,31 +73,29 @@ class HomePage extends StatelessWidget {
                         );
                       }
 
-                      return Column(
-                        children: state.activeSessions.map((room) {
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: state.activeSessions.length,
+                        itemBuilder: (context, index) {
+                          final room = state.activeSessions[index];
                           return Padding(
+                            key: ValueKey(room.id),
                             padding: const EdgeInsets.only(
                               bottom: AppConstants.spacing16,
                             ),
-                            child: GestureDetector(
-                              onTap: () => RoomJoinHelper.joinRoom(
+                            child: RoomCard(
+                              name: room.name,
+                              users: room.usersCount,
+                              isLocked: room.isLocked,
+                              onJoin: () => RoomJoinHelper.joinRoom(
                                 context,
                                 room.id,
                                 room.isLocked,
                               ),
-                              child: RoomCard(
-                                name: room.name,
-                                users: room.usersCount,
-                                isLocked: room.isLocked,
-                                onJoin: () => RoomJoinHelper.joinRoom(
-                                  context,
-                                  room.name,
-                                  room.isLocked,
-                                ),
-                              ),
                             ),
                           );
-                        }).toList(),
+                        },
                       );
                     },
                   ),

@@ -53,24 +53,34 @@ class RoomsPage extends StatelessWidget {
                       );
                     }
 
-                    return Column(
-                      children: roomIds.map((roomId) {
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: roomIds.length,
+                      itemBuilder: (context, index) {
+                        final roomId = roomIds[index];
                         final chatBloc = activeChatsManager.get(roomId);
                         if (chatBloc == null) return const SizedBox.shrink();
 
                         return BlocBuilder<ChatBloc, ChatState>(
+                          key: ValueKey(roomId),
                           bloc: chatBloc,
+                          buildWhen: (prev, curr) =>
+                              prev.messages.length != curr.messages.length ||
+                              prev.users != curr.users,
                           builder: (context, chatState) {
                             final lastMsg = chatState.messages.isNotEmpty
                                 ? chatState.messages.last.content
                                 : 'No messages yet';
 
-                            final identityState = context
-                                .read<IdentityBloc>()
-                                .state;
-                            final myNick = identityState is IdentityLoaded
-                                ? identityState.user.nickname
-                                : '';
+                            final myNick = context.select<IdentityBloc, String>(
+                              (bloc) {
+                                final s = bloc.state;
+                                return s is IdentityLoaded
+                                    ? s.user.nickname
+                                    : '';
+                              },
+                            );
                             final isMeHost = chatState.users.any(
                               (u) => u.nick == myNick && u.isHost,
                             );
@@ -88,7 +98,7 @@ class RoomsPage extends StatelessWidget {
                             );
                           },
                         );
-                      }).toList(),
+                      },
                     );
                   },
                 ),
