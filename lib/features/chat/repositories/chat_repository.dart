@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:injectable/injectable.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -38,6 +39,9 @@ abstract class ChatRepository {
 
 @Injectable(as: ChatRepository)
 class ChatRepositoryImpl implements ChatRepository {
+  static const int maxReconnectAttempts = 10;
+  static const int maxQueuedMessages = 50;
+
   WebSocketChannel? _channel;
   final _messagesController = StreamController<Message>.broadcast();
   final _usersController = StreamController<List<BackendUserInfo>>.broadcast();
@@ -64,6 +68,8 @@ class ChatRepositoryImpl implements ChatRepository {
   Timer? _reconnectTimer;
   Timer? _voiceRejoinTimer;
   StreamSubscription<dynamic>? _channelSub;
+  final List<BackendMessage> _pendingSends = [];
+  final _random = Random();
 
   @override
   Stream<Message> get messages => _messagesController.stream;
@@ -91,6 +97,7 @@ class ChatRepositoryImpl implements ChatRepository {
     _nick = nick;
     _password = password;
     _reconnectAttempts = 0;
+    _pendingSends.clear();
     _isDisposed = false;
 
     _updateStatus(ConnectionStatus.connecting);
@@ -158,10 +165,10 @@ class ChatRepositoryImpl implements ChatRepository {
         if (msg.type == 'error' && msg.text == 'invalid_password') {
           if (!completer.isCompleted) {
             completer.completeError('invalid_password');
-          } else {
+          } else if (!_messagesController.isClosed) {
             _messagesController.addError('invalid_password');
           }
-          disconnect();
+          unawaited(disconnect());
           return;
         }
 
@@ -169,6 +176,7 @@ class ChatRepositoryImpl implements ChatRepository {
           completer.complete();
           _updateStatus(ConnectionStatus.connected);
           _reconnectAttempts = 0;
+          _flushQueue();
         }
 
         if (msg.type == 'history') {
@@ -247,21 +255,66 @@ class ChatRepositoryImpl implements ChatRepository {
     _reconnectTimer?.cancel();
     if (_isDisposed) return;
 
-    final delaySeconds = (1 << _reconnectAttempts).clamp(1, 30);
+    if (_reconnectAttempts >= maxReconnectAttempts) {
+      _pendingSends.clear();
+      _updateStatus(ConnectionStatus.disconnected);
+      return;
+    }
+
+    final backoffSeconds = (1 << _reconnectAttempts).clamp(1, 30);
+    final jitterMs = _random.nextInt(1000);
     _reconnectAttempts++;
 
-    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () async {
-      if (_isDisposed || _connectionStatus != ConnectionStatus.reconnecting) {
-        return;
-      }
+    _reconnectTimer = Timer(
+      Duration(seconds: backoffSeconds, milliseconds: jitterMs),
+      () async {
+        if (_isDisposed || _connectionStatus != ConnectionStatus.reconnecting) {
+          return;
+        }
 
+        try {
+          await _establishConnection();
+          await _maybeRejoinVoice();
+        } catch (_) {
+          _scheduleReconnect();
+        }
+      },
+    );
+  }
+
+  /// Sends immediately when connected, otherwise queues (bounded) for flush
+  /// on reconnect. Typing is ephemeral and dropped while offline.
+  void _sendOrQueue(BackendMessage msg, {bool dropWhenOffline = false}) {
+    if (_isDisposed) return;
+    final channel = _channel;
+    if (channel != null && _connectionStatus == ConnectionStatus.connected) {
       try {
-        await _establishConnection();
-        await _maybeRejoinVoice();
-      } catch (e) {
-        _scheduleReconnect();
+        channel.sink.add(jsonEncode(msg.toJson()));
+        return;
+      } catch (_) {
+        // Fall through to queue so the message is not silently lost.
       }
-    });
+    }
+    if (dropWhenOffline) return;
+    if (_pendingSends.length >= maxQueuedMessages) {
+      _pendingSends.removeAt(0);
+    }
+    _pendingSends.add(msg);
+  }
+
+  void _flushQueue() {
+    if (_pendingSends.isEmpty) return;
+    final pending = List<BackendMessage>.from(_pendingSends);
+    _pendingSends.clear();
+    for (final msg in pending) {
+      try {
+        _channel?.sink.add(jsonEncode(msg.toJson()));
+      } catch (_) {
+        // Re-queue on failure and stop flushing to preserve order.
+        _pendingSends.insert(0, msg);
+        break;
+      }
+    }
   }
 
   void _handleIncomingMessage(BackendMessage backendMsg, String roomCode) {
@@ -303,54 +356,34 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Future<void> sendMessage(String content, {int? replyToId}) async {
-    if (_channel != null) {
-      final msg = BackendMessage(
-        type: 'message',
-        text: content,
-        replyToId: replyToId,
-      );
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(
+      BackendMessage(type: 'message', text: content, replyToId: replyToId),
+    );
   }
 
   @override
   Future<void> updateNickname(String nick) async {
-    if (_channel != null) {
-      final msg = BackendMessage(type: 'nick', newNick: nick);
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(BackendMessage(type: 'nick', newNick: nick));
   }
 
   @override
   Future<void> updateColor(String color) async {
-    if (_channel != null) {
-      final msg = BackendMessage(type: 'color', color: color);
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(BackendMessage(type: 'color', color: color));
   }
 
   @override
   Future<void> setPassword(String password) async {
-    if (_channel != null) {
-      final msg = BackendMessage(type: 'set_password', password: password);
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(BackendMessage(type: 'set_password', password: password));
   }
 
   @override
   Future<void> sendTyping() async {
-    if (_channel != null) {
-      final msg = BackendMessage(type: 'typing');
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(BackendMessage(type: 'typing'), dropWhenOffline: true);
   }
 
   @override
   Future<void> sendReaction(int messageId, String name) async {
-    if (_channel != null) {
-      final msg = BackendMessage(type: 'reaction', id: messageId, text: name);
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(BackendMessage(type: 'reaction', id: messageId, text: name));
   }
 
   @override
@@ -401,12 +434,14 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   Future<String> _requestMediaToken() async {
+    final channel = _channel;
+    if (channel == null || _connectionStatus != ConnectionStatus.connected) {
+      throw StateError('not connected');
+    }
     final completer = Completer<String>();
     _mediaTokenCompleter = completer;
 
-    _channel!.sink.add(
-      jsonEncode(BackendMessage(type: 'media_token').toJson()),
-    );
+    channel.sink.add(jsonEncode(BackendMessage(type: 'media_token').toJson()));
 
     final token = await completer.future.timeout(
       const Duration(seconds: 5),
@@ -480,6 +515,7 @@ class ChatRepositoryImpl implements ChatRepository {
     _voiceRejoinTimer?.cancel();
     _voiceRejoinTimer = null;
     _voiceRejoinPending = false;
+    _pendingSends.clear();
     await _closeVoiceSession();
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
