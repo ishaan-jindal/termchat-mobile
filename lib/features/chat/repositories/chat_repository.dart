@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -41,6 +42,17 @@ abstract class ChatRepository {
 class ChatRepositoryImpl implements ChatRepository {
   static const int maxReconnectAttempts = 10;
   static const int maxQueuedMessages = 50;
+
+  ChatRepositoryImpl() : _channelFactory = WebSocketChannel.connect;
+
+  /// Test seam: inject a fake channel factory to avoid real sockets.
+  @visibleForTesting
+  ChatRepositoryImpl.forTest({
+    required WebSocketChannel Function(Uri uri) channelFactory,
+    // ignore: prefer_initializing_formals, named for readability at call sites.
+  }) : _channelFactory = channelFactory;
+
+  final WebSocketChannel Function(Uri uri) _channelFactory;
 
   WebSocketChannel? _channel;
   final _messagesController = StreamController<Message>.broadcast();
@@ -122,7 +134,7 @@ class ChatRepositoryImpl implements ChatRepository {
     _channel = null;
 
     final uri = Uri.parse(AppConstants.wsBaseUrl);
-    _channel = WebSocketChannel.connect(uri);
+    _channel = _channelFactory(uri);
 
     final completer = Completer<void>();
 

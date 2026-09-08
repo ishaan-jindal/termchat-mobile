@@ -1,0 +1,276 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:stream_channel/stream_channel.dart';
+import 'package:termchat_app/core/models/message.dart';
+import 'package:termchat_app/features/chat/repositories/chat_repository.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+/// In-memory WebSocketChannel that records what the client sends and lets the
+/// test push frames as if they came from the server.
+class FakeWebSocketChannel extends StreamChannelMixin<dynamic>
+    implements WebSocketChannel {
+  FakeWebSocketChannel() : controller = StreamController<dynamic>.broadcast();
+
+  final StreamController<dynamic> controller;
+  final List<Object?> sent = [];
+  bool closed = false;
+
+  @override
+  String? get protocol => null;
+
+  @override
+  int? get closeCode => null;
+
+  @override
+  String? get closeReason => null;
+
+  @override
+  Future<void> get ready => Future<void>.value();
+
+  @override
+  Stream<dynamic> get stream => controller.stream;
+
+  @override
+  WebSocketSink get sink => _FakeSink(this);
+
+  void serverSend(Object message) {
+    controller.add(message);
+  }
+
+  void serverDone() {
+    controller.close();
+  }
+}
+
+class _FakeSink implements WebSocketSink {
+  _FakeSink(this._channel);
+
+  final FakeWebSocketChannel _channel;
+
+  @override
+  Future get done => _channel.controller.done;
+
+  @override
+  void add(Object? event) {
+    _channel.sent.add(event);
+    _channel.controller.add(event);
+  }
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {
+    _channel.controller.addError(error, stackTrace);
+  }
+
+  @override
+  Future addStream(Stream<dynamic> stream) =>
+      _channel.controller.addStream(stream);
+
+  @override
+  Future close([int? closeCode, String? closeReason]) {
+    _channel.closed = true;
+    return _channel.controller.close();
+  }
+}
+
+void main() {
+  late ChatRepositoryImpl repo;
+  late List<FakeWebSocketChannel> channels;
+
+  FakeWebSocketChannel channel() => channels.last;
+
+  setUp(() {
+    channels = [];
+    repo = ChatRepositoryImpl.forTest(
+      channelFactory: (_) {
+        final c = FakeWebSocketChannel();
+        channels.add(c);
+        return c;
+      },
+    );
+  });
+
+  tearDown(() {
+    repo.dispose();
+  });
+
+  /// Flushes pending microtasks/timers so async broadcast deliveries land.
+  Future<void> pump() => Future<void>.delayed(Duration.zero);
+
+  Future<void> connectAndHandshake() async {
+    final future = repo.connect('ROOM', 'Alice');
+    // Let _establishConnection reach the stream.listen call before replying.
+    await pump();
+    // Server replies with the join ack.
+    channel().serverSend(jsonEncode({'type': 'ok'}));
+    await future;
+    await pump();
+  }
+
+  group('connect', () {
+    test('completes and reports connected after handshake', () async {
+      final statuses = <ConnectionStatus>[];
+      final sub = repo.connectionStatus.listen(statuses.add);
+
+      final connect = repo.connect('ROOM', 'Alice');
+      await pump();
+      channel().serverSend(jsonEncode({'type': 'ok'}));
+      await connect;
+      await pump();
+
+      expect(statuses, contains(ConnectionStatus.connected));
+      expect(channel().sent, isNotEmpty);
+      await sub.cancel();
+    });
+
+    test('throws invalid_password when server rejects', () async {
+      final connect = repo.connect('ROOM', 'Alice', password: 'wrong');
+      await pump();
+      channel().serverSend(
+        jsonEncode({'type': 'error', 'text': 'invalid_password'}),
+      );
+
+      await expectLater(connect, throwsA('invalid_password'));
+      await pump();
+    });
+  });
+
+  group('inbound parsing', () {
+    test('emits chat messages from history batch', () async {
+      await connectAndHandshake();
+
+      final messages = <Message>[];
+      final sub = repo.messages.listen(messages.add);
+
+      channel().serverSend(
+        jsonEncode({
+          'type': 'history',
+          'messages': [
+            {'type': 'chat', 'nick': 'Bob', 'text': 'hi', 'timestamp': 1},
+            {'type': 'chat', 'nick': 'Cara', 'text': 'yo', 'timestamp': 2},
+          ],
+        }),
+      );
+
+      await pump();
+      expect(messages, hasLength(2));
+      expect(messages[0].content, 'hi');
+      expect(messages[1].senderNickname, 'Cara');
+      await sub.cancel();
+    });
+
+    test('emits users list', () async {
+      await connectAndHandshake();
+
+      final users = <List>[];
+      final sub = repo.users.listen(users.add);
+
+      channel().serverSend(
+        jsonEncode({
+          'type': 'users_list',
+          'users': [
+            {'nick': 'Bob', 'color': '#FF0000'},
+          ],
+        }),
+      );
+
+      await pump();
+      expect(users, hasLength(1));
+      expect(users.first, hasLength(1));
+      await sub.cancel();
+    });
+
+    test('skips malformed frames without killing the listener', () async {
+      await connectAndHandshake();
+
+      final messages = <Message>[];
+      final sub = repo.messages.listen(messages.add);
+
+      channel().serverSend('not-json');
+      channel().serverSend(
+        jsonEncode({'type': 'chat', 'nick': 'Bob', 'text': 'ok'}),
+      );
+      channel().serverSend(<int>[1, 2, 3]); // binary frame
+
+      await pump();
+      expect(messages, hasLength(1));
+      expect(messages.single.content, 'ok');
+      await sub.cancel();
+    });
+  });
+
+  group('reconnect', () {
+    test('re-enters reconnecting on socket close and reconnects', () async {
+      await connectAndHandshake();
+
+      final statuses = <ConnectionStatus>[];
+      final sub = repo.connectionStatus.listen(statuses.add);
+      statuses.clear();
+
+      channels.first.serverDone();
+      await pump();
+      expect(statuses, contains(ConnectionStatus.reconnecting));
+
+      // Backoff is ~1s + jitter; let the reconnect timer fire and dial.
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      await pump();
+      await pump();
+      expect(channels, hasLength(2));
+
+      channels.last.serverSend(jsonEncode({'type': 'ok'}));
+      await pump();
+      expect(statuses, contains(ConnectionStatus.connected));
+
+      await sub.cancel();
+    });
+
+    test('queues sends while reconnecting and flushes on reconnect', () async {
+      await connectAndHandshake();
+
+      channels.first.serverDone();
+      await pump();
+
+      await repo.sendMessage('hello');
+      await repo.sendMessage('world');
+
+      // Nothing flushed while reconnecting.
+      final before = channels.last.sent.map((e) => e.toString()).join('\n');
+      expect(before, isNot(contains('hello')));
+
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      await pump();
+      await pump();
+      channels.last.serverSend(jsonEncode({'type': 'ok'}));
+      await pump();
+
+      final sentStrings = channels.last.sent
+          .map((e) => e.toString())
+          .join('\n');
+      expect(sentStrings, contains('hello'));
+      expect(sentStrings, contains('world'));
+    });
+
+    test('drops typing while offline', () async {
+      await connectAndHandshake();
+
+      channels.first.serverDone();
+      await pump();
+
+      await repo.sendTyping();
+      await repo.sendMessage('kept');
+
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      await pump();
+      await pump();
+      channels.last.serverSend(jsonEncode({'type': 'ok'}));
+      await pump();
+
+      final sentStrings = channels.last.sent
+          .map((e) => e.toString())
+          .join('\n');
+      expect(sentStrings, isNot(contains('"typing"')));
+      expect(sentStrings, contains('kept'));
+    });
+  });
+}
