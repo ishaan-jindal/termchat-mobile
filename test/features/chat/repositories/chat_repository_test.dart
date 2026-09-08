@@ -17,6 +17,9 @@ class FakeWebSocketChannel extends StreamChannelMixin<dynamic>
   final List<Object?> sent = [];
   bool closed = false;
 
+  /// When true, sink.add throws to simulate a dead socket mid-flush.
+  bool throwOnSend = false;
+
   @override
   String? get protocol => null;
 
@@ -54,8 +57,11 @@ class _FakeSink implements WebSocketSink {
 
   @override
   void add(Object? event) {
+    if (_channel.throwOnSend) {
+      throw StateError('sink closed');
+    }
+    // Record only: a real socket never echoes client sends back inbound.
     _channel.sent.add(event);
-    _channel.controller.add(event);
   }
 
   @override
@@ -271,6 +277,91 @@ void main() {
           .join('\n');
       expect(sentStrings, isNot(contains('"typing"')));
       expect(sentStrings, contains('kept'));
+    });
+
+    test('failed flush re-queues the whole tail in order', () async {
+      await connectAndHandshake();
+
+      channels.first.serverDone();
+      await pump();
+
+      await repo.sendMessage('one');
+      await repo.sendMessage('two');
+      await repo.sendMessage('three');
+
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      await pump();
+      await pump();
+      expect(channels, hasLength(2));
+
+      // Kill the redialed socket before the ack so the flush fails.
+      channels.last.throwOnSend = true;
+      channels.last.serverSend(jsonEncode({'type': 'ok'}));
+      await pump();
+
+      // Only the join went out; nothing was lost.
+      expect(channels.last.sent, hasLength(1));
+
+      // Next reconnect flushes all three in order.
+      channels.last.serverDone();
+      await pump();
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      await pump();
+      await pump();
+      channels.last.serverSend(jsonEncode({'type': 'ok'}));
+      await pump();
+
+      final sentStrings = channels.last.sent
+          .map((e) => e.toString())
+          .join('\n');
+      final one = sentStrings.indexOf('one');
+      final two = sentStrings.indexOf('two');
+      final three = sentStrings.indexOf('three');
+      expect(one, isNonNegative);
+      expect(two, greaterThan(one));
+      expect(three, greaterThan(two));
+    });
+  });
+
+  group('media token', () {
+    test(
+      'disconnect fails a pending token request instead of hanging',
+      () async {
+        await connectAndHandshake();
+
+        final join = repo.joinVoice();
+        await pump();
+        final expectation = expectLater(join, throwsStateError);
+
+        await repo.disconnect();
+
+        await expectation;
+      },
+    );
+
+    test('a second token request fails the superseded first one', () async {
+      await connectAndHandshake();
+
+      final first = repo.joinVoice();
+      await pump();
+      final firstExpectation = expectLater(
+        first,
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'media token request superseded',
+          ),
+        ),
+      );
+      final second = repo.joinVoice();
+      await pump();
+      final secondExpectation = expectLater(second, throwsStateError);
+
+      await repo.disconnect();
+
+      await firstExpectation;
+      await secondExpectation;
     });
   });
 }

@@ -73,7 +73,6 @@ class ChatRepositoryImpl implements ChatRepository {
   bool _voiceWanted = false;
   bool _voiceRejoinPending = false;
   Completer<String>? _mediaTokenCompleter;
-
   ConnectionStatus _connectionStatus = ConnectionStatus.disconnected;
   bool _isDisposed = false;
   int _reconnectAttempts = 0;
@@ -160,14 +159,14 @@ class ChatRepositoryImpl implements ChatRepository {
         }
 
         if (msg.type == 'media_token') {
-          final completer = _mediaTokenCompleter;
+          final pending = _mediaTokenCompleter;
           _mediaTokenCompleter = null;
 
-          if (completer != null && !completer.isCompleted) {
+          if (pending != null && !pending.isCompleted) {
             if (msg.token != null && msg.token!.isNotEmpty) {
-              completer.complete(msg.token!);
+              pending.complete(msg.token!);
             } else {
-              completer.completeError(StateError('empty media token'));
+              pending.completeError(StateError('empty media token'));
             }
           }
 
@@ -318,12 +317,13 @@ class ChatRepositoryImpl implements ChatRepository {
     if (_pendingSends.isEmpty) return;
     final pending = List<BackendMessage>.from(_pendingSends);
     _pendingSends.clear();
-    for (final msg in pending) {
+    for (var i = 0; i < pending.length; i++) {
       try {
-        _channel?.sink.add(jsonEncode(msg.toJson()));
+        _channel?.sink.add(jsonEncode(pending[i].toJson()));
       } catch (_) {
-        // Re-queue on failure and stop flushing to preserve order.
-        _pendingSends.insert(0, msg);
+        // Re-queue the failed message AND everything after it to preserve
+        // order; nothing is dropped.
+        _pendingSends.insertAll(0, pending.sublist(i));
         break;
       }
     }
@@ -450,6 +450,11 @@ class ChatRepositoryImpl implements ChatRepository {
     if (channel == null || _connectionStatus != ConnectionStatus.connected) {
       throw StateError('not connected');
     }
+    // Fail any superseded request instead of leaving it hanging forever.
+    final stale = _mediaTokenCompleter;
+    if (stale != null && !stale.isCompleted) {
+      stale.completeError(StateError('media token request superseded'));
+    }
     final completer = Completer<String>();
     _mediaTokenCompleter = completer;
 
@@ -458,12 +463,25 @@ class ChatRepositoryImpl implements ChatRepository {
     final token = await completer.future.timeout(
       const Duration(seconds: 5),
       onTimeout: () {
-        _mediaTokenCompleter = null;
+        // Only clear our own completer; a newer request may own the field.
+        if (identical(_mediaTokenCompleter, completer)) {
+          _mediaTokenCompleter = null;
+        }
         throw TimeoutException('media token request timed out');
       },
     );
 
     return token;
+  }
+
+  /// Completes a pending media-token request with an error instead of
+  /// dropping it (a dropped completer hangs the awaiting joinVoice forever).
+  void _failPendingMediaToken(Object error) {
+    final pending = _mediaTokenCompleter;
+    _mediaTokenCompleter = null;
+    if (pending != null && !pending.isCompleted) {
+      pending.completeError(error);
+    }
   }
 
   Future<void> _closeVoiceSession() async {
@@ -531,7 +549,7 @@ class ChatRepositoryImpl implements ChatRepository {
     await _closeVoiceSession();
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
-    _mediaTokenCompleter = null;
+    _failPendingMediaToken(StateError('disconnected'));
     _updateStatus(ConnectionStatus.disconnected);
     await _channelSub?.cancel();
     _channelSub = null;
@@ -548,6 +566,7 @@ class ChatRepositoryImpl implements ChatRepository {
     _voiceRejoinTimer?.cancel();
     _channelSub?.cancel();
     _voiceEventSub?.cancel();
+    _failPendingMediaToken(StateError('disposed'));
     // Best-effort close; controllers guarded by isClosed on every add.
     try {
       _channel?.sink.close();
