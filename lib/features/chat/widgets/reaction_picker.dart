@@ -23,25 +23,30 @@ void showReactionPicker(
           alignment: WrapAlignment.center,
           children: reactionNames.map((name) {
             final isMine = myReactions.contains('$messageId:$name');
-            return InkWell(
-              onTap: () {
-                onToggle(name);
-                Navigator.of(context).pop();
-              },
-              borderRadius: BorderRadius.circular(AppConstants.spacing14),
-              child: Container(
-                padding: const EdgeInsets.all(AppConstants.spacing8),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: isMine
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).dividerColor,
+            return Semantics(
+              button: true,
+              label:
+                  '${reactionGlyph(name)}${isMine ? ', selected' : ''} reaction',
+              child: InkWell(
+                onTap: () {
+                  onToggle(name);
+                  Navigator.of(context).pop();
+                },
+                borderRadius: BorderRadius.circular(AppConstants.spacing14),
+                child: Container(
+                  padding: const EdgeInsets.all(AppConstants.spacing8),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: isMine
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).dividerColor,
+                    ),
+                    borderRadius: BorderRadius.circular(AppConstants.spacing14),
                   ),
-                  borderRadius: BorderRadius.circular(AppConstants.spacing14),
-                ),
-                child: Text(
-                  reactionGlyph(name),
-                  style: Theme.of(context).textTheme.titleLarge,
+                  child: Text(
+                    reactionGlyph(name),
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                 ),
               ),
             );

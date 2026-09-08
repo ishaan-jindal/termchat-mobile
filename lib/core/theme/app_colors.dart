@@ -24,7 +24,7 @@ class AppColors {
   static const Color textSecondaryLight = Color(0xFF6F6E6A);
 
   static const Color textTertiaryDark = Color(0xFF686763);
-  static const Color textTertiaryLight = Color(0xFFA3A19B);
+  static const Color textTertiaryLight = Color(0xFF71706A);
 
   // Borders
   static const Color borderDefaultDark = Color(0xFF2A2A28);

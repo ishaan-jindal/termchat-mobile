@@ -120,17 +120,20 @@ class AppearanceSettings extends StatelessWidget {
     return InkWell(
       onTap: () => context.read<SettingsBloc>().add(UpdateFontSize(size)),
       child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected ? theme.dividerColor : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
-        child: Text(
-          size,
-          style: textTheme.labelSmall?.copyWith(
-            color: isSelected
-                ? theme.colorScheme.onSurface
-                : textTheme.labelSmall?.color,
+        child: Center(
+          child: Text(
+            size,
+            style: textTheme.labelSmall?.copyWith(
+              color: isSelected
+                  ? theme.colorScheme.onSurface
+                  : textTheme.labelSmall?.color,
+            ),
           ),
         ),
       ),

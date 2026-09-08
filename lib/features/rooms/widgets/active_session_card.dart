@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/theme/app_colors.dart';
 
 class ActiveSessionCard extends StatelessWidget {
   final String roomName;
@@ -74,11 +73,11 @@ class ActiveSessionCard extends StatelessWidget {
                           const SizedBox(width: AppConstants.spacing8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                              horizontal: AppConstants.spacing6,
+                              vertical: AppConstants.spacing2,
                             ),
-                            decoration: const BoxDecoration(
-                              color: AppColors.errorDark, // Red unread badge
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.error,
                               shape: BoxShape.circle,
                             ),
                             alignment: Alignment.center,

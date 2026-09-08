@@ -19,6 +19,7 @@ class AppConstants {
   static const Duration httpTimeout = Duration(seconds: 10);
 
   // ── Spacing ──
+  static const double spacing2 = 2;
   static const double spacing4 = 4;
   static const double spacing6 = 6;
   static const double spacing8 = 8;

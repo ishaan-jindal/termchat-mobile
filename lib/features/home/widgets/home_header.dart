@@ -35,9 +35,7 @@ class HomeHeader extends StatelessWidget {
         Text(
           AppConstants.appDescription,
           textAlign: TextAlign.center,
-          style: textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
+          style: textTheme.bodySmall,
         ),
       ],
     );

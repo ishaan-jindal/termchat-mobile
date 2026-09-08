@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 
 class RoomCard extends StatelessWidget {
@@ -39,18 +38,24 @@ class RoomCard extends StatelessWidget {
               const SizedBox(height: AppConstants.spacing4),
               Row(
                 children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppColors.successDark,
-                      shape: BoxShape.circle,
+                  ExcludeSemantics(
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.tertiary,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppConstants.spacing8),
-                  Text(
-                    '$users user${users != 1 ? 's' : ''}${isLocked ? ' · locked' : ''}',
-                    style: textTheme.bodySmall,
+                  Flexible(
+                    child: Text(
+                      '$users user${users != 1 ? 's' : ''}${isLocked ? ' · locked' : ''}',
+                      style: textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),

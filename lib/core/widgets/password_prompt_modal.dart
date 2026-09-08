@@ -131,12 +131,19 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
             const SizedBox(height: AppConstants.spacing8),
             Align(
               alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () {
+              child: TextButton(
+                onPressed: () {
                   setState(() {
                     _obscureText = !_obscureText;
                   });
                 },
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.spacing12,
+                  ),
+                ),
                 child: Text(
                   _obscureText ? 'show password' : 'hide password',
                   style: textTheme.labelSmall,
