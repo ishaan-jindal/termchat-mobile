@@ -28,6 +28,7 @@ class RoomUsersDrawer extends StatelessWidget {
     final textTheme = theme.textTheme;
 
     return BlocBuilder<ChatBloc, ChatState>(
+      buildWhen: (previous, current) => previous.users != current.users,
       builder: (context, state) {
         return Container(
           decoration: BoxDecoration(
@@ -67,22 +68,33 @@ class RoomUsersDrawer extends StatelessWidget {
                       ),
                     ),
                   ),
-                ...state.users.map((user) {
-                  return Padding(
-                    padding: const EdgeInsets.only(
-                      bottom: AppConstants.spacing16,
+                if (state.users.isNotEmpty)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 320),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: state.users.length,
+                      itemBuilder: (context, index) {
+                        final user = state.users[index];
+                        return Padding(
+                          key: ValueKey(user.nick),
+                          padding: const EdgeInsets.only(
+                            bottom: AppConstants.spacing16,
+                          ),
+                          child: _buildUserRow(
+                            context: context,
+                            username: user.nick,
+                            color: ColorUtils.parseHexColor(user.color),
+                            isHost: user.isHost,
+                            isTyping: user.typing,
+                            isInVoice: user.voiceId != 0,
+                            metaText:
+                                '· joined ${_formatJoinTime(user.joinedAt)}',
+                          ),
+                        );
+                      },
                     ),
-                    child: _buildUserRow(
-                      context: context,
-                      username: user.nick,
-                      color: ColorUtils.parseHexColor(user.color),
-                      isHost: user.isHost,
-                      isTyping: user.typing,
-                      isInVoice: user.voiceId != 0,
-                      metaText: '· joined ${_formatJoinTime(user.joinedAt)}',
-                    ),
-                  );
-                }),
+                  ),
                 const SizedBox(height: AppConstants.spacing16),
                 OutlinedButton(
                   onPressed: () {
@@ -139,91 +151,102 @@ class RoomUsersDrawer extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppConstants.spacing12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  username,
-                  style: textTheme.titleMedium?.copyWith(color: color),
-                ),
-                if (isHost) ...[
-                  const SizedBox(width: AppConstants.spacing4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).dividerColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
                     child: Text(
-                      '[host]',
-                      style: textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 9,
-                      ),
+                      username,
+                      style: textTheme.titleMedium?.copyWith(color: color),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ],
-                if (isTyping) ...[
-                  const SizedBox(width: AppConstants.spacing4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).dividerColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'typing...',
-                      style: textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 9,
+                  if (isHost) ...[
+                    const SizedBox(width: AppConstants.spacing4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
                       ),
-                    ),
-                  ),
-                ],
-                if (isInVoice) ...[
-                  const SizedBox(width: AppConstants.spacing4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).dividerColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.mic,
-                          size: 9,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).dividerColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '[host]',
+                        style: textTheme.labelSmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 9,
                         ),
-                        const SizedBox(width: 2),
-                        Text(
-                          'vc',
-                          style: textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 9,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
+                  if (isTyping) ...[
+                    const SizedBox(width: AppConstants.spacing4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).dividerColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'typing...',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 9,
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (isInVoice) ...[
+                    const SizedBox(width: AppConstants.spacing4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).dividerColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.mic,
+                            size: 9,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            'vc',
+                            style: textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 9,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(metaText, style: textTheme.bodySmall),
-          ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                metaText,
+                style: textTheme.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ],
     );

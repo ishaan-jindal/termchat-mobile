@@ -90,7 +90,7 @@ class IdentitySettings extends StatelessWidget {
           ),
         );
       },
-    );
+    ).then((_) => controller.dispose());
   }
 
   void _showEditColorModal(BuildContext context, String currentColor) {
@@ -171,7 +171,7 @@ class IdentitySettings extends StatelessWidget {
           ),
         );
       },
-    );
+    ).then((_) => controller.dispose());
   }
 
   @override

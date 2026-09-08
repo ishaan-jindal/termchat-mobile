@@ -37,27 +37,36 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(roomName, style: textTheme.headlineMedium),
-                const SizedBox(height: AppConstants.spacing4),
-                Row(
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.tertiary,
-                        shape: BoxShape.circle,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    roomName,
+                    style: textTheme.headlineMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppConstants.spacing4),
+                  Row(
+                    children: [
+                      ExcludeSemantics(
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.tertiary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: AppConstants.spacing8),
-                    Text('connected', style: textTheme.bodySmall),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: AppConstants.spacing8),
+                      Text('connected', style: textTheme.bodySmall),
+                    ],
+                  ),
+                ],
+              ),
             ),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -72,11 +81,17 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
                         : theme.colorScheme.onSurfaceVariant,
                   ),
                 const SizedBox(width: AppConstants.spacing8),
-                GestureDetector(
-                  onTap: onOpenDrawer,
+                TextButton(
+                  onPressed: onOpenDrawer,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   child: Text(
                     '$usersCount users ›',
                     style: textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

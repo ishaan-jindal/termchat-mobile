@@ -105,26 +105,34 @@ class _VoiceControlBarState extends State<VoiceControlBar> {
                   : theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: AppConstants.spacing8),
-            Listener(
-              key: const Key('voice_ptt_button'),
-              onPointerDown: _handlePointerDown,
-              onPointerUp: (_) => _handlePointerUpOrCancel(),
-              onPointerCancel: (_) => _handlePointerUpOrCancel(),
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: transmitting
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.surfaceContainerHighest,
-                ),
-                child: Icon(
-                  transmitting ? Icons.mic : Icons.mic_none,
-                  size: 32,
-                  color: transmitting
-                      ? theme.colorScheme.onError
-                      : theme.colorScheme.onSurfaceVariant,
+            Semantics(
+              button: true,
+              enabled: true,
+              label: transmitting
+                  ? 'Stop transmitting voice'
+                  : 'Hold to talk in voice',
+              hint: 'Press and hold to transmit',
+              child: Listener(
+                key: const Key('voice_ptt_button'),
+                onPointerDown: _handlePointerDown,
+                onPointerUp: (_) => _handlePointerUpOrCancel(),
+                onPointerCancel: (_) => _handlePointerUpOrCancel(),
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: transmitting
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.surfaceContainerHighest,
+                  ),
+                  child: Icon(
+                    transmitting ? Icons.mic : Icons.mic_none,
+                    size: 32,
+                    color: transmitting
+                        ? theme.colorScheme.onError
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),

@@ -48,17 +48,23 @@ class _MessageListState extends State<MessageList> {
 
   @override
   Widget build(BuildContext context) {
-    final identityState = context.watch<IdentityBloc>().state;
-    String myNick = '';
-    if (identityState is IdentityLoaded) {
-      myNick = identityState.user.nickname;
-    }
+    final myNick = context.select<IdentityBloc, String>((bloc) {
+      final s = bloc.state;
+      return s is IdentityLoaded ? s.user.nickname : '';
+    });
 
     return BlocConsumer<ChatBloc, ChatState>(
       listenWhen: (previous, current) =>
           previous.messages.length != current.messages.length,
+      buildWhen: (previous, current) =>
+          previous.messages != current.messages ||
+          previous.myReactions != current.myReactions ||
+          previous.isConnected != current.isConnected,
       listener: (context, state) {
-        Future.delayed(const Duration(milliseconds: 50), _scrollToBottom);
+        if (!mounted) return;
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted) _scrollToBottom();
+        });
       },
       builder: (context, state) {
         final messages = state.messages;
@@ -72,10 +78,17 @@ class _MessageListState extends State<MessageList> {
           );
         }
 
+        // Prune scroll keys for messages that left the capped history so the
+        // map cannot grow without bound or pin old Elements.
+        final ids = messages.map((m) => m.id).toSet();
+        _messageKeys.removeWhere((id, _) => !ids.contains(id));
+
         return ListView.separated(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(vertical: AppConstants.spacing24),
           itemCount: messages.length,
+          addAutomaticKeepAlives: false,
+          addRepaintBoundaries: true,
           separatorBuilder: (context, index) =>
               const SizedBox(height: AppConstants.spacing14),
           itemBuilder: (context, index) {

@@ -27,6 +27,7 @@ class SwipeToReply extends StatefulWidget {
 class _SwipeToReplyState extends State<SwipeToReply>
     with SingleTickerProviderStateMixin {
   late final AnimationController _snapController;
+  Animation<double>? _snapAnim;
   double _offset = 0;
   bool _triggered = false;
 
@@ -34,6 +35,14 @@ class _SwipeToReplyState extends State<SwipeToReply>
   void initState() {
     super.initState();
     _snapController = AnimationController(vsync: this);
+    _snapController.addListener(_onSnapTick);
+  }
+
+  void _onSnapTick() {
+    final anim = _snapAnim;
+    if (anim == null) return;
+    _offset = anim.value;
+    if (mounted) setState(() {});
   }
 
   void _onDragStart(DragStartDetails details) {
@@ -54,14 +63,10 @@ class _SwipeToReplyState extends State<SwipeToReply>
   void _onDragEnd(DragEndDetails details) {
     final begin = _offset;
     if (begin <= 0) return;
-    final animation = Tween<double>(
+    _snapAnim = Tween<double>(
       begin: begin,
       end: 0,
     ).animate(CurvedAnimation(parent: _snapController, curve: Curves.easeOut));
-    animation.addListener(() {
-      _offset = animation.value;
-      setState(() {});
-    });
     _snapController
       ..duration = const Duration(milliseconds: 220)
       ..forward(from: 0);
@@ -70,6 +75,7 @@ class _SwipeToReplyState extends State<SwipeToReply>
 
   @override
   void dispose() {
+    _snapController.removeListener(_onSnapTick);
     _snapController.dispose();
     super.dispose();
   }
