@@ -173,13 +173,21 @@ class ChatRepositoryImpl implements ChatRepository {
           return;
         }
 
-        if (msg.type == 'error' && msg.text == 'invalid_password') {
+        if (msg.type == 'error') {
+          // Any server rejection fails the handshake; only a clean first
+          // frame marks the room connected. After the handshake, only a
+          // session-invalidating password error tears down; transient
+          // errors (e.g. rate limits) are non-fatal.
+          final code = msg.text ?? 'server_error';
           if (!completer.isCompleted) {
-            completer.completeError('invalid_password');
-          } else if (!_messagesController.isClosed) {
-            _messagesController.addError('invalid_password');
+            completer.completeError(code);
+            unawaited(disconnect());
+          } else if (code == 'invalid_password') {
+            if (!_messagesController.isClosed) {
+              _messagesController.addError(code);
+            }
+            unawaited(disconnect());
           }
-          unawaited(disconnect());
           return;
         }
 

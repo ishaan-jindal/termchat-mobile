@@ -140,6 +140,45 @@ void main() {
       await expectLater(connect, throwsA('invalid_password'));
       await pump();
     });
+
+    test(
+      'fails the handshake on any server error, not just password',
+      () async {
+        final connect = repo.connect('ROOM', 'Alice');
+        await pump();
+        channel().serverSend(
+          jsonEncode({'type': 'error', 'text': 'nick-taken'}),
+        );
+
+        await expectLater(connect, throwsA('nick-taken'));
+        await pump();
+      },
+    );
+
+    test('ignores transient post-join errors without disconnecting', () async {
+      await connectAndHandshake();
+
+      final statuses = <ConnectionStatus>[];
+      final sub = repo.connectionStatus.listen(statuses.add);
+      final messages = <Message>[];
+      final msgSub = repo.messages.listen(messages.add);
+
+      channel().serverSend(
+        jsonEncode({'type': 'error', 'text': 'rate_limited'}),
+      );
+      await pump();
+
+      expect(statuses, isNot(contains(ConnectionStatus.disconnected)));
+
+      channel().serverSend(
+        jsonEncode({'type': 'chat', 'nick': 'Bob', 'text': 'still here'}),
+      );
+      await pump();
+      expect(messages.map((m) => m.content), contains('still here'));
+
+      await sub.cancel();
+      await msgSub.cancel();
+    });
   });
 
   group('inbound parsing', () {
