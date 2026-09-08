@@ -10,7 +10,9 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:get_it/get_it.dart' as _i174;
+import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
+import 'package:termchat_app/di/network_module.dart' as _i726;
 import 'package:termchat_app/features/chat/bloc/chat_bloc.dart' as _i213;
 import 'package:termchat_app/features/chat/managers/active_chats_manager.dart'
     as _i605;
@@ -35,6 +37,8 @@ extension GetItInjectableX on _i174.GetIt {
     _i526.EnvironmentFilter? environmentFilter,
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
+    final networkModule = _$NetworkModule();
+    gh.lazySingleton<_i519.Client>(() => networkModule.httpClient);
     gh.lazySingleton<_i605.ActiveChatsManager>(
       () => _i605.ActiveChatsManager(),
     );
@@ -48,12 +52,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i48.IdentityBloc>(
       () => _i48.IdentityBloc(gh<_i351.IdentityRepository>()),
     );
-    gh.lazySingleton<_i949.RoomRepository>(() => _i949.RoomRepositoryImpl());
     gh.lazySingleton<_i395.SettingsBloc>(
       () => _i395.SettingsBloc(gh<_i732.SettingsRepository>()),
     );
-    gh.factory<_i1055.RoomsBloc>(
-      () => _i1055.RoomsBloc(gh<_i949.RoomRepository>()),
+    gh.lazySingleton<_i949.RoomRepository>(
+      () => _i949.RoomRepositoryImpl(gh<_i519.Client>()),
     );
     gh.factory<_i213.ChatBloc>(
       () => _i213.ChatBloc(
@@ -62,6 +65,11 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i395.SettingsBloc>(),
       ),
     );
+    gh.factory<_i1055.RoomsBloc>(
+      () => _i1055.RoomsBloc(gh<_i949.RoomRepository>()),
+    );
     return this;
   }
 }
+
+class _$NetworkModule extends _i726.NetworkModule {}

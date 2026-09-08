@@ -7,10 +7,16 @@ class AppConstants {
   static const String appDescription = 'minimal anonymous chatrooms';
 
   // --- API ---
-  static const String apiHost = 'termchat.sacred99.online';
+  static const String apiHost = String.fromEnvironment(
+    'TERMCHAT_API_HOST',
+    defaultValue: 'termchat.sacred99.online',
+  );
   static const String apiBaseUrl = 'https://$apiHost';
   static const String wsBaseUrl = 'wss://$apiHost/ws';
   static const String mediaWsBaseUrl = 'wss://$apiHost/media';
+
+  static const String discoverPath = '/discover';
+  static const Duration httpTimeout = Duration(seconds: 10);
 
   // ── Spacing ──
   static const double spacing4 = 4;
