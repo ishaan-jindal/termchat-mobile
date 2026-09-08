@@ -1,7 +1,4 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:termchat_app/features/chat/bloc/chat_bloc.dart';
 import 'package:termchat_app/features/chat/managers/active_chats_manager.dart';
@@ -36,13 +33,10 @@ void main() {
   late ActiveChatsManager manager;
 
   setUp(() {
-    GetIt.instance.registerFactory<ChatBloc>(createTestChatBloc);
-    manager = ActiveChatsManager();
+    manager = ActiveChatsManager(createTestChatBloc);
   });
 
-  tearDown(() {
-    GetIt.instance.reset();
-  });
+  tearDown(() {});
 
   group('ActiveChatsManager', () {
     test('starts with no active rooms', () {

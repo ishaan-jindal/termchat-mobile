@@ -7,25 +7,27 @@ import '../../features/chat/pages/chat_page.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../di/injection.dart';
 import '../../features/rooms/pages/rooms_page.dart';
 import '../../features/settings/pages/settings_page.dart';
 import '../../features/chat/managers/active_chats_manager.dart';
 
 class AppRouter {
-  AppRouter._();
+  AppRouter(this._activeChatsManager);
 
-  static final GlobalKey<NavigatorState> _rootNavigatorKey =
-      GlobalKey<NavigatorState>(debugLabel: 'root');
+  final ActiveChatsManager _activeChatsManager;
 
-  static final GoRouter router = GoRouter(
+  final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
+    debugLabel: 'root',
+  );
+
+  late final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
     routes: [
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
-          return RepositoryProvider.value(
-            value: getIt<ActiveChatsManager>(),
+          return RepositoryProvider<ActiveChatsManager>.value(
+            value: _activeChatsManager,
             child: ShellLayout(navigationShell: navigationShell),
           );
         },
@@ -40,9 +42,7 @@ class AppRouter {
                     path: 'chat/:roomId',
                     builder: (context, state) {
                       final roomId = state.pathParameters['roomId']!;
-                      final chatBloc = getIt<ActiveChatsManager>().getOrCreate(
-                        roomId,
-                      );
+                      final chatBloc = _activeChatsManager.getOrCreate(roomId);
                       return BlocProvider.value(
                         value: chatBloc,
                         child: const ChatPage(),

@@ -14,8 +14,6 @@ import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:termchat_app/di/network_module.dart' as _i726;
 import 'package:termchat_app/features/chat/bloc/chat_bloc.dart' as _i213;
-import 'package:termchat_app/features/chat/managers/active_chats_manager.dart'
-    as _i605;
 import 'package:termchat_app/features/chat/repositories/chat_repository.dart'
     as _i811;
 import 'package:termchat_app/features/rooms/bloc/rooms_bloc.dart' as _i1055;
@@ -39,9 +37,6 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final networkModule = _$NetworkModule();
     gh.lazySingleton<_i519.Client>(() => networkModule.httpClient);
-    gh.lazySingleton<_i605.ActiveChatsManager>(
-      () => _i605.ActiveChatsManager(),
-    );
     gh.lazySingleton<_i351.IdentityRepository>(
       () => _i351.IdentityRepositoryImpl(),
     );

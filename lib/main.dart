@@ -11,6 +11,7 @@ import 'core/utils/notification_helper.dart';
 import 'features/settings/bloc/identity/identity_bloc.dart';
 import 'features/settings/bloc/settings/settings_bloc.dart';
 import 'features/rooms/bloc/rooms_bloc.dart';
+import 'features/chat/managers/active_chats_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,8 +26,15 @@ void main() async {
 
   final identityBloc = getIt<IdentityBloc>()..add(LoadIdentity());
   final settingsBloc = getIt<SettingsBloc>()..add(LoadSettings());
+  final appRouter = AppRouter(getIt<ActiveChatsManager>());
 
-  runApp(TermchatApp(identityBloc: identityBloc, settingsBloc: settingsBloc));
+  runApp(
+    TermchatApp(
+      identityBloc: identityBloc,
+      settingsBloc: settingsBloc,
+      appRouter: appRouter,
+    ),
+  );
 
   // Prompt for notification permission after the first frame so the system
   // dialog never covers a blank screen or blocks startup.
@@ -38,11 +46,13 @@ void main() async {
 class TermchatApp extends StatelessWidget {
   final IdentityBloc identityBloc;
   final SettingsBloc settingsBloc;
+  final AppRouter appRouter;
 
   const TermchatApp({
     super.key,
     required this.identityBloc,
     required this.settingsBloc,
+    required this.appRouter,
   });
 
   @override
@@ -72,7 +82,7 @@ class TermchatApp extends StatelessWidget {
             themeMode: themeMode,
             theme: AppTheme.light(fontSize: settingsState.fontSize),
             darkTheme: AppTheme.dark(fontSize: settingsState.fontSize),
-            routerConfig: AppRouter.router,
+            routerConfig: appRouter.router,
           );
         },
       ),
