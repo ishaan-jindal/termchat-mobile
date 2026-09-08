@@ -55,8 +55,11 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Verify formatting
+        run: dart format --set-exit-if-changed lib test
+
       - name: Analyze
-        run: flutter analyze
+        run: flutter analyze --fatal-warnings --fatal-infos
 
       - name: Test
         run: flutter test

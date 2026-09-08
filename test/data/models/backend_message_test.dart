@@ -72,6 +72,46 @@ void main() {
         expect(msg.color, '#FF0000');
         expect(msg.password, 'secret');
       });
+
+      test('missing type defaults to unknown instead of throwing', () {
+        final msg = BackendMessage.fromJson({'nick': 'Alice'});
+
+        expect(msg.type, 'unknown');
+      });
+
+      test('skips malformed entries instead of aborting batch', () {
+        final json = {
+          'type': 'history',
+          'messages': [
+            {'type': 'chat', 'nick': 'Alice', 'text': 'Hi'},
+            {'type': 'chat', 'nick': 'Bob', 'text': 'Hey'},
+            'not-a-map',
+            {'type': 'chat', 'nick': 'Cara', 'text': 'Yo'},
+          ],
+        };
+
+        final msg = BackendMessage.fromJson(json);
+
+        expect(msg.messages, hasLength(3));
+      });
+
+      test('skips users with missing nick/color', () {
+        final json = {
+          'type': 'users_list',
+          'users': [
+            {'nick': 'Alice', 'color': '#FF0000'},
+            {'nick': '', 'color': '#00FF00'},
+            {'color': '#0000FF'},
+            {'nick': 'Bob', 'color': '#00FF00'},
+          ],
+        };
+
+        final msg = BackendMessage.fromJson(json);
+
+        expect(msg.users, hasLength(2));
+        expect(msg.users![0].nick, 'Alice');
+        expect(msg.users![1].nick, 'Bob');
+      });
     });
 
     group('toJson', () {

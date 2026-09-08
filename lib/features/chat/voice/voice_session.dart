@@ -67,6 +67,7 @@ class VoiceSession {
     required String room,
     required String token,
   }) async {
+    // ignore: close_sinks, ownership transfers to VoiceSession.dispose.
     final socket =
         await WebSocket.connect(mediaEndpointUri(mediaUrl).toString()).timeout(
           const Duration(seconds: 10),
@@ -216,6 +217,7 @@ class VoiceSession {
   }
 
   Future<void> _startCapture() async {
+    // ignore: close_sinks, closed in _stopCapture/dispose.
     final controller = StreamController<Uint8List>();
     _captureController = controller;
 

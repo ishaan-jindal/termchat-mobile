@@ -484,6 +484,40 @@ void main() {
         voiceErrorsController.add('voice dropped');
         await waitForState(chatBloc, (s) => s.voiceError == 'voice dropped');
       });
+
+      test('ClearVoiceError clears sticky voiceError', () async {
+        voiceErrorsController.add('voice dropped');
+        await waitForState(chatBloc, (s) => s.voiceError == 'voice dropped');
+
+        chatBloc.add(ClearVoiceError());
+        await waitForState(chatBloc, (s) => s.voiceError == null);
+
+        expect(chatBloc.state.voiceError, isNull);
+      });
+    });
+
+    group('Errors', () {
+      test('stream error sets error and disconnected status', () async {
+        await connectToRoom();
+
+        messagesController.addError(Exception('boom'));
+        await waitForState(chatBloc, (s) => s.error != null);
+
+        expect(chatBloc.state.isConnected, isFalse);
+        expect(chatBloc.state.connectionStatus, ConnectionStatus.disconnected);
+      });
+
+      test('ClearChatError clears sticky error', () async {
+        await connectToRoom();
+
+        messagesController.addError(Exception('boom'));
+        await waitForState(chatBloc, (s) => s.error != null);
+
+        chatBloc.add(ClearChatError());
+        await waitForState(chatBloc, (s) => s.error == null);
+
+        expect(chatBloc.state.error, isNull);
+      });
     });
   });
 }

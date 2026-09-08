@@ -57,6 +57,26 @@ void main() {
 
         roomsBloc.add(LoadActiveSessions());
       });
+
+      test('periodic refresh updates silently without spinner', () async {
+        when(() => mockRepository.getActiveSessions())
+            .thenAnswer((_) async => sessions);
+
+        roomsBloc.add(LoadActiveSessions());
+        await untilCalled(() => mockRepository.getActiveSessions());
+
+        // Second load (e.g. 30s timer) must not re-emit isLoading:true.
+        final future = expectLater(
+          roomsBloc.stream,
+          emitsThrough(
+            predicate<RoomsState>(
+              (s) => !s.isLoading && s.activeSessions == sessions,
+            ),
+          ),
+        );
+        roomsBloc.add(LoadActiveSessions());
+        await future;
+      });
     });
   });
 }
