@@ -12,8 +12,12 @@ class BackendRoomInfo {
   });
 
   factory BackendRoomInfo.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as String?;
+    if (id == null || id.isEmpty) {
+      throw const FormatException('missing room id');
+    }
     return BackendRoomInfo(
-      id: json['id'] as String,
+      id: id,
       userCount: json['user_count'] as int? ?? 0,
       hasPassword: json['has_password'] as bool? ?? false,
       hostNick: json['host_nick'] as String? ?? '',

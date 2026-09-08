@@ -16,9 +16,14 @@ class BackendUserInfo {
   });
 
   factory BackendUserInfo.fromJson(Map<String, dynamic> json) {
+    final nick = json['nick'] as String?;
+    final color = json['color'] as String?;
+    if (nick == null || nick.isEmpty || color == null || color.isEmpty) {
+      throw const FormatException('missing user nick/color');
+    }
     return BackendUserInfo(
-      nick: json['nick'] as String,
-      color: json['color'] as String,
+      nick: nick,
+      color: color,
       joinedAt: json['joined_at'] as int? ?? 0,
       typing: json['typing'] as bool? ?? false,
       isHost: json['is_host'] as bool? ?? false,

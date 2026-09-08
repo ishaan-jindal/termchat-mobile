@@ -32,6 +32,7 @@ class VoiceSession {
   StreamSubscription<dynamic>? _inboundSub;
   Future<void>? _playoutFuture;
   StreamController<Uint8List>? _captureController;
+  StreamSubscription<Uint8List>? _captureSub;
   final Completer<void> _handshake = Completer<void>();
   final Uint8List _silence = Uint8List(audioChunkBytes);
 
@@ -66,9 +67,11 @@ class VoiceSession {
     required String room,
     required String token,
   }) async {
-    final socket = await WebSocket.connect(
-      mediaEndpointUri(mediaUrl).toString(),
-    );
+    final socket =
+        await WebSocket.connect(mediaEndpointUri(mediaUrl).toString()).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException('media connect timed out'),
+        );
     final channel = IOWebSocketChannel(socket);
     final session = VoiceSession._(channel);
 
@@ -194,6 +197,7 @@ class VoiceSession {
     if (on == _transmitting) return;
     if (_captureInProgress) return;
 
+    final previous = _transmitting;
     _transmitting = on;
     _captureInProgress = true;
 
@@ -204,7 +208,7 @@ class VoiceSession {
         await _stopCapture();
       }
     } catch (_) {
-      _transmitting = false;
+      _transmitting = previous;
       rethrow;
     } finally {
       _captureInProgress = false;
@@ -215,12 +219,16 @@ class VoiceSession {
     final controller = StreamController<Uint8List>();
     _captureController = controller;
 
-    controller.stream.listen((chunk) {
+    _captureSub = controller.stream.listen((chunk) {
       for (final frame in _assembler.add(chunk)) {
         if (_disposed || _channelClosed) return;
-        _channel.sink.add(encodeAudioFrame(frame));
+        try {
+          _channel.sink.add(encodeAudioFrame(frame));
+        } catch (_) {
+          return;
+        }
       }
-    });
+    }, onError: (_) {});
 
     await _recorder.startRecorder(
       toStream: controller.sink,
@@ -235,6 +243,13 @@ class VoiceSession {
   Future<void> _stopCapture() async {
     final controller = _captureController;
     _captureController = null;
+    final sub = _captureSub;
+    _captureSub = null;
+    if (sub != null) {
+      try {
+        await sub.cancel();
+      } catch (_) {}
+    }
 
     if (_recorder.isRecording) {
       try {
@@ -264,7 +279,11 @@ class VoiceSession {
       _failHandshake(error.toString());
     }
 
-    _eventsController.add(VoiceSessionError(error.toString()));
+    if (!_eventsController.isClosed) {
+      try {
+        _eventsController.add(VoiceSessionError(error.toString()));
+      } catch (_) {}
+    }
     _emitEnded();
   }
 
@@ -278,6 +297,9 @@ class VoiceSession {
     if (_disposed) return;
 
     _disposed = true;
+
+    await _captureSub?.cancel().catchError((_) {});
+    _captureSub = null;
 
     if (_transmitting) {
       await _stopCapture();

@@ -5,10 +5,11 @@ class BackendReaction {
   BackendReaction({required this.name, required this.count});
 
   factory BackendReaction.fromJson(Map<String, dynamic> json) {
-    return BackendReaction(
-      name: json['name'] as String,
-      count: json['count'] as int? ?? 0,
-    );
+    final name = json['name'] as String?;
+    if (name == null || name.isEmpty) {
+      throw const FormatException('missing reaction name');
+    }
+    return BackendReaction(name: name, count: json['count'] as int? ?? 0);
   }
 
   Map<String, dynamic> toJson() {

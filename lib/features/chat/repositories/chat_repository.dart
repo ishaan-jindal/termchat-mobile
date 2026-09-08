@@ -62,6 +62,8 @@ class ChatRepositoryImpl implements ChatRepository {
   bool _isDisposed = false;
   int _reconnectAttempts = 0;
   Timer? _reconnectTimer;
+  Timer? _voiceRejoinTimer;
+  StreamSubscription<dynamic>? _channelSub;
 
   @override
   Stream<Message> get messages => _messagesController.stream;
@@ -103,6 +105,15 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> _establishConnection() async {
     if (_isDisposed) return;
 
+    // Drop any previous socket/subscription before dialing a new one so
+    // reconnects never leak the old channel.
+    await _channelSub?.cancel();
+    _channelSub = null;
+    try {
+      await _channel?.sink.close();
+    } catch (_) {}
+    _channel = null;
+
     final uri = Uri.parse(AppConstants.wsBaseUrl);
     _channel = WebSocketChannel.connect(uri);
 
@@ -116,11 +127,18 @@ class ChatRepositoryImpl implements ChatRepository {
     );
     _channel!.sink.add(jsonEncode(joinMsg.toJson()));
 
-    _channel!.stream.listen(
+    _channelSub = _channel!.stream.listen(
       (data) {
         if (_isDisposed) return;
-        final Map<String, dynamic> json = jsonDecode(data as String);
-        final msg = BackendMessage.fromJson(json);
+        final BackendMessage msg;
+        try {
+          if (data is! String) return;
+          final decoded = jsonDecode(data);
+          if (decoded is! Map<String, dynamic>) return;
+          msg = BackendMessage.fromJson(decoded);
+        } catch (_) {
+          return;
+        }
 
         if (msg.type == 'media_token') {
           final completer = _mediaTokenCompleter;
@@ -160,11 +178,11 @@ class ChatRepositoryImpl implements ChatRepository {
             }
           }
         } else if (msg.type == 'users_list') {
-          if (msg.users != null) {
+          if (msg.users != null && !_usersController.isClosed) {
             _usersController.add(msg.users!);
           }
         } else if (msg.type == 'reaction') {
-          if (msg.id != null) {
+          if (msg.id != null && !_reactionUpdatesController.isClosed) {
             _reactionUpdatesController.add(
               ReactionUpdate(
                 messageId: msg.id.toString(),
@@ -185,7 +203,6 @@ class ChatRepositoryImpl implements ChatRepository {
         if (!completer.isCompleted) {
           completer.completeError(error);
         } else {
-          _messagesController.addError(error);
           _handleDisconnectOrError(error);
         }
       },
@@ -202,7 +219,11 @@ class ChatRepositoryImpl implements ChatRepository {
     return completer.future.timeout(
       const Duration(seconds: 10),
       onTimeout: () {
-        _channel?.sink.close();
+        _channelSub?.cancel();
+        _channelSub = null;
+        try {
+          _channel?.sink.close();
+        } catch (_) {}
         _channel = null;
         throw TimeoutException('Connection timed out');
       },
@@ -247,6 +268,7 @@ class ChatRepositoryImpl implements ChatRepository {
     if (backendMsg.type == 'chat' ||
         backendMsg.type == 'message' ||
         backendMsg.type == 'system') {
+      if (_messagesController.isClosed) return;
       final ts = backendMsg.timestamp;
       final timestamp = ts != null
           ? DateTime.fromMillisecondsSinceEpoch(ts)
@@ -427,7 +449,8 @@ class ChatRepositoryImpl implements ChatRepository {
           !_voiceRejoinPending &&
           _connectionStatus == ConnectionStatus.connected) {
         _voiceRejoinPending = true;
-        Timer(const Duration(seconds: 1), () {
+        _voiceRejoinTimer?.cancel();
+        _voiceRejoinTimer = Timer(const Duration(seconds: 1), () {
           _voiceRejoinPending = false;
           _maybeRejoinVoice();
         });
@@ -454,18 +477,34 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<void> disconnect() async {
     _voiceWanted = false;
+    _voiceRejoinTimer?.cancel();
+    _voiceRejoinTimer = null;
+    _voiceRejoinPending = false;
     await _closeVoiceSession();
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
+    _mediaTokenCompleter = null;
     _updateStatus(ConnectionStatus.disconnected);
-    await _channel?.sink.close();
+    await _channelSub?.cancel();
+    _channelSub = null;
+    try {
+      await _channel?.sink.close();
+    } catch (_) {}
     _channel = null;
   }
 
   @override
   void dispose() {
     _isDisposed = true;
-    disconnect();
+    _reconnectTimer?.cancel();
+    _voiceRejoinTimer?.cancel();
+    _channelSub?.cancel();
+    _voiceEventSub?.cancel();
+    // Best-effort close; controllers guarded by isClosed on every add.
+    try {
+      _channel?.sink.close();
+    } catch (_) {}
+    _channel = null;
     _messagesController.close();
     _usersController.close();
     _connectionStatusController.close();

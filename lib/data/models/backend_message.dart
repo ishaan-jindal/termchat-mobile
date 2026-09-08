@@ -42,7 +42,7 @@ class BackendMessage {
 
   factory BackendMessage.fromJson(Map<String, dynamic> json) {
     return BackendMessage(
-      type: json['type'] as String,
+      type: json['type'] as String? ?? 'unknown',
       id: json['id'] as int?,
       nick: json['nick'] as String?,
       room: json['room'] as String?,
@@ -56,16 +56,30 @@ class BackendMessage {
       replyToId: json['reply_to_id'] as int?,
       replyToNick: json['reply_to_nick'] as String?,
       replyToText: json['reply_to_text'] as String?,
-      reactions: (json['reactions'] as List<dynamic>?)
-          ?.map((e) => BackendReaction.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      messages: (json['messages'] as List<dynamic>?)
-          ?.map((e) => BackendMessage.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      users: (json['users'] as List<dynamic>?)
-          ?.map((e) => BackendUserInfo.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      reactions: _parseList(json['reactions'], BackendReaction.fromJson),
+      messages: _parseList(json['messages'], BackendMessage.fromJson),
+      users: _parseList(json['users'], BackendUserInfo.fromJson),
     );
+  }
+
+  /// Parses a JSON list element-by-element, skipping malformed entries
+  /// instead of aborting the whole batch.
+  static List<T>? _parseList<T>(
+    Object? raw,
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
+    if (raw == null) return null;
+    if (raw is! List) return null;
+    final out = <T>[];
+    for (final e in raw) {
+      if (e is! Map<String, dynamic>) continue;
+      try {
+        out.add(fromJson(e));
+      } catch (_) {
+        continue;
+      }
+    }
+    return out;
   }
 
   Map<String, dynamic> toJson() {
