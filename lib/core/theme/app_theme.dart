@@ -6,6 +6,15 @@ import 'package:termchat_app/core/theme/app_text_styles.dart';
 class AppTheme {
   AppTheme._();
 
+  /// Inverse "primary action" filled button used for the send/join/save style
+  /// (onSurface background, surface foreground) across modals and the input bar.
+  static ButtonStyle inverseFilledButtonStyle(ColorScheme colorScheme) {
+    return FilledButton.styleFrom(
+      backgroundColor: colorScheme.onSurface,
+      foregroundColor: colorScheme.surface,
+    );
+  }
+
   static ThemeData light({String fontSize = 'sm'}) =>
       _buildTheme(false, fontSize);
 
@@ -106,6 +115,14 @@ class AppTheme {
         foregroundColor: primaryText,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: AppTextStyles.roomCode.copyWith(color: primaryText),
+      ),
+
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+        ),
       ),
 
       cardTheme: CardThemeData(

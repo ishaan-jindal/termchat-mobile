@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color_utils.dart';
 import '../bloc/identity/identity_bloc.dart';
 import '../../chat/bloc/chat_bloc.dart' as chat_bloc;
@@ -76,9 +77,8 @@ class IdentitySettings extends StatelessWidget {
                           }
                           Navigator.pop(bottomSheetContext);
                         },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: theme.colorScheme.onSurface,
-                          foregroundColor: theme.colorScheme.surface,
+                        style: AppTheme.inverseFilledButtonStyle(
+                          theme.colorScheme,
                         ),
                         child: const Text('save'),
                       ),
@@ -157,9 +157,8 @@ class IdentitySettings extends StatelessWidget {
                           }
                           Navigator.pop(bottomSheetContext);
                         },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: theme.colorScheme.onSurface,
-                          foregroundColor: theme.colorScheme.surface,
+                        style: AppTheme.inverseFilledButtonStyle(
+                          theme.colorScheme,
                         ),
                         child: const Text('save'),
                       ),

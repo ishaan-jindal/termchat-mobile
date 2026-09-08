@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/room_join_helper.dart';
 
 class RoomActionCard extends StatefulWidget {
@@ -92,11 +93,9 @@ class _RoomActionCardState extends State<RoomActionCard> {
           const SizedBox(height: AppConstants.spacing16),
           FilledButton(
             onPressed: _handleJoin,
-            style: FilledButton.styleFrom(
-              backgroundColor: colorScheme.onSurface,
-              foregroundColor: colorScheme.surface,
-              padding: const EdgeInsets.symmetric(
-                vertical: AppConstants.spacing12,
+            style: AppTheme.inverseFilledButtonStyle(colorScheme).copyWith(
+              padding: WidgetStatePropertyAll(
+                const EdgeInsets.symmetric(vertical: AppConstants.spacing12),
               ),
             ),
             child: const Text('join room'),

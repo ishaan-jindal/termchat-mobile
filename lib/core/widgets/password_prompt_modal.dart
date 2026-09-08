@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../features/settings/bloc/identity/identity_bloc.dart';
 import '../constants/app_constants.dart';
+import '../theme/app_theme.dart';
 
 class PasswordPromptModal extends StatefulWidget {
   final String roomCode;
@@ -155,10 +156,7 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
                 Expanded(
                   child: FilledButton(
                     onPressed: _handleJoin,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: theme.colorScheme.onSurface,
-                      foregroundColor: theme.colorScheme.surface,
-                    ),
+                    style: AppTheme.inverseFilledButtonStyle(theme.colorScheme),
                     child: const Text('join room'),
                   ),
                 ),

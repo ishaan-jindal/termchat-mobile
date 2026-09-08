@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/models/message.dart';
+import '../../../core/theme/app_theme.dart';
 
 class ChatInputArea extends StatefulWidget {
   final void Function(String text, int? replyToId) onSend;
@@ -91,14 +92,15 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                 const SizedBox(width: AppConstants.spacing16),
                 FilledButton(
                   onPressed: _handleSend,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.onSurface,
-                    foregroundColor: theme.colorScheme.surface,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppConstants.spacing24,
-                      vertical: AppConstants.spacing12,
-                    ),
-                  ),
+                  style: AppTheme.inverseFilledButtonStyle(theme.colorScheme)
+                      .copyWith(
+                        padding: WidgetStatePropertyAll(
+                          const EdgeInsets.symmetric(
+                            horizontal: AppConstants.spacing24,
+                            vertical: AppConstants.spacing12,
+                          ),
+                        ),
+                      ),
                   child: const Text('send'),
                 ),
               ],
