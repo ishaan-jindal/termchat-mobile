@@ -102,6 +102,10 @@ class _ChatError extends ChatEvent {
 
 class DisconnectChat extends ChatEvent {}
 
+class ClearChatError extends ChatEvent {}
+
+class ClearVoiceError extends ChatEvent {}
+
 class StartVoice extends ChatEvent {}
 
 class StopVoice extends ChatEvent {}

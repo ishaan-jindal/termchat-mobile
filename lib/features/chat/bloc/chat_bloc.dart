@@ -19,6 +19,8 @@ part 'chat_event.dart';
 
 @injectable
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
+  static const int maxMessages = 500;
+
   final ChatRepository _repository;
   final identity.IdentityBloc _identityBloc;
   final SettingsBloc _settingsBloc;
@@ -51,6 +53,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<_VoiceError>(_onVoiceError);
     on<DisconnectChat>(_onDisconnectChat);
     on<_ConnectionStatusChanged>(_onConnectionStatusChanged);
+    on<ClearChatError>(_onClearChatError);
+    on<ClearVoiceError>(_onClearVoiceError);
   }
 
   Future<void> _onConnectChat(
@@ -66,6 +70,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
       await _messageSubscription?.cancel();
       await _usersSubscription?.cancel();
+      await _reactionSubscription?.cancel();
 
       _messageSubscription = _repository.messages.listen(
         (message) => add(_MessageReceived(message)),
@@ -150,7 +155,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
             isSystemMessage: true,
           );
           emit(
-            state.copyWith(messages: List.from(state.messages)..add(helpMsg)),
+            state.copyWith(messages: _appendCapped(state.messages, helpMsg)),
           );
           return;
         } else if (cmd == '/clear') {
@@ -289,9 +294,9 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   void _onMessageReceived(_MessageReceived event, Emitter<ChatState> emit) {
-    final updatedMessages = List<Message>.from(state.messages)
-      ..add(event.message);
-    emit(state.copyWith(messages: updatedMessages));
+    emit(
+      state.copyWith(messages: _appendCapped(state.messages, event.message)),
+    );
 
     // Check for user mention
     final identityState = _identityBloc.state;
@@ -338,7 +343,32 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   void _onChatError(_ChatError event, Emitter<ChatState> emit) {
-    emit(state.copyWith(error: event.error, isConnected: false));
+    emit(
+      state.copyWith(
+        error: event.error,
+        isConnected: false,
+        connectionStatus: ConnectionStatus.disconnected,
+      ),
+    );
+  }
+
+  void _onClearChatError(ClearChatError event, Emitter<ChatState> emit) {
+    emit(state.copyWith(clearError: true));
+  }
+
+  void _onClearVoiceError(ClearVoiceError event, Emitter<ChatState> emit) {
+    emit(state.copyWith(clearVoiceError: true));
+  }
+
+  /// Appends a message while keeping the in-memory history bounded so long
+  /// rooms cannot grow without limit.
+  List<Message> _appendCapped(List<Message> current, Message next) {
+    if (current.length >= maxMessages) {
+      return List<Message>.from(
+        current.sublist(current.length - maxMessages + 1),
+      )..add(next);
+    }
+    return List<Message>.from(current)..add(next);
   }
 
   Future<void> _onDisconnectChat(
@@ -401,14 +431,17 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   @override
-  Future<void> close() {
-    _messageSubscription?.cancel();
-    _usersSubscription?.cancel();
-    _reactionSubscription?.cancel();
-    _connectionStatusSubscription?.cancel();
-    _voiceActiveSubscription?.cancel();
-    _voiceErrorSubscription?.cancel();
+  Future<void> close() async {
+    await Future.wait([
+      if (_messageSubscription != null) _messageSubscription!.cancel(),
+      if (_usersSubscription != null) _usersSubscription!.cancel(),
+      if (_reactionSubscription != null) _reactionSubscription!.cancel(),
+      if (_connectionStatusSubscription != null)
+        _connectionStatusSubscription!.cancel(),
+      if (_voiceActiveSubscription != null) _voiceActiveSubscription!.cancel(),
+      if (_voiceErrorSubscription != null) _voiceErrorSubscription!.cancel(),
+    ]);
     _repository.dispose();
-    return super.close();
+    await super.close();
   }
 }

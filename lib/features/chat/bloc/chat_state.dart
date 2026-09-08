@@ -44,6 +44,7 @@ class ChatState extends Equatable {
     bool? isVoiceActive,
     bool? isVoiceTransmitting,
     String? voiceError,
+    bool clearVoiceError = false,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -57,7 +58,7 @@ class ChatState extends Equatable {
       replyingTo: clearReplyingTo ? null : (replyingTo ?? this.replyingTo),
       isVoiceActive: isVoiceActive ?? this.isVoiceActive,
       isVoiceTransmitting: isVoiceTransmitting ?? this.isVoiceTransmitting,
-      voiceError: voiceError ?? this.voiceError,
+      voiceError: clearVoiceError ? null : (voiceError ?? this.voiceError),
     );
   }
 
