@@ -55,14 +55,6 @@ class AppRouter {
                         child: const ChatPage(),
                       );
                     },
-                    // System back bypasses /quit; release here (no-op if left).
-                    onExit: (context, state) {
-                      final roomId = state.pathParameters['roomId'];
-                      if (roomId != null) {
-                        _activeChatsManager.remove(roomId);
-                      }
-                      return true;
-                    },
                   ),
                 ],
               ),
