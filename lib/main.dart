@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 import 'di/injection.dart';
-import 'core/constants/app_constants.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_lifecycle_tracker.dart';
@@ -16,9 +14,6 @@ import 'features/chat/managers/active_chats_manager.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   configureDependencies();
-
-  final packageInfo = await PackageInfo.fromPlatform();
-  AppConstants.appVersion = packageInfo.version;
 
   AppLifecycleTracker.instance.init();
   await NotificationHelper.initialize();

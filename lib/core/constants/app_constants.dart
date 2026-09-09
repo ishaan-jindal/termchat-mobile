@@ -2,7 +2,7 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'termchat';
-  static String appVersion = '';
+  static const String appVersion = '1.4.0';
   static const String appDescription = 'minimal anonymous chatrooms';
 
   static const String apiHost = String.fromEnvironment(
