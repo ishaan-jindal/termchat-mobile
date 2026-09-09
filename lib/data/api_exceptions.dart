@@ -17,14 +17,19 @@ class ApiNetworkException extends ApiException {
   final Object? cause;
 }
 
-/// The server answered with a non-2xx status.
+/// The server answered with a non-2xx status. Carries a truncated body
+/// snippet so failures are debuggable without dumping pages of HTML.
 class ApiServerException extends ApiException {
-  const ApiServerException(this.statusCode) : super('Server error');
+  const ApiServerException(this.statusCode, [this.bodySnippet = ''])
+    : super('Server error');
 
   final int statusCode;
+  final String bodySnippet;
 
   @override
-  String toString() => 'Server error ($statusCode)';
+  String toString() => bodySnippet.isEmpty
+      ? 'Server error ($statusCode)'
+      : 'Server error ($statusCode): $bodySnippet';
 }
 
 /// The response body was not valid JSON or had an unexpected shape.

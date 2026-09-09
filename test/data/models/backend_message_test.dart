@@ -112,6 +112,49 @@ void main() {
         expect(msg.users![0].nick, 'Alice');
         expect(msg.users![1].nick, 'Bob');
       });
+
+      test('coerces string numbers and bools', () {
+        final json = {
+          'type': 'chat',
+          'id': '7',
+          'timestamp': '1700000000000',
+          'reply_to_id': '3',
+          'users': [
+            {
+              'nick': 'Alice',
+              'color': '#FF0000',
+              'joined_at': '1700000000',
+              'typing': 1,
+              'is_host': 'true',
+              'voice_id': '9',
+            },
+          ],
+        };
+
+        final msg = BackendMessage.fromJson(json);
+
+        expect(msg.id, 7);
+        expect(msg.timestamp, 1700000000000);
+        expect(msg.replyToId, 3);
+        expect(msg.users![0].joinedAt, 1700000000);
+        expect(msg.users![0].typing, isTrue);
+        expect(msg.users![0].isHost, isTrue);
+        expect(msg.users![0].voiceId, 9);
+      });
+
+      test('caps pathological batches', () {
+        final json = {
+          'type': 'history',
+          'messages': List.generate(
+            BackendMessage.maxBatchItems + 500,
+            (i) => {'type': 'chat', 'nick': 'A', 'text': 'm$i'},
+          ),
+        };
+
+        final msg = BackendMessage.fromJson(json);
+
+        expect(msg.messages, hasLength(BackendMessage.maxBatchItems));
+      });
     });
 
     group('toJson', () {

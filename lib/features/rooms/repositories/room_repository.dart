@@ -38,7 +38,10 @@ class RoomRepositoryImpl implements RoomRepository {
     }
 
     if (response.statusCode != 200) {
-      throw ApiServerException(response.statusCode);
+      final snippet = response.body.length > 200
+          ? '${response.body.substring(0, 200)}…'
+          : response.body;
+      throw ApiServerException(response.statusCode, snippet);
     }
 
     final Object? decoded;
@@ -48,12 +51,18 @@ class RoomRepositoryImpl implements RoomRepository {
       throw const ApiParseException('Malformed room list from server');
     }
 
-    if (decoded is! List) {
+    // Accept a bare list or a {rooms: [...]} envelope.
+    final List<Object?> rawList;
+    if (decoded is List) {
+      rawList = decoded;
+    } else if (decoded is Map<String, dynamic> && decoded['rooms'] is List) {
+      rawList = decoded['rooms'] as List;
+    } else {
       throw const ApiParseException('Unexpected room list shape');
     }
 
     final rooms = <Room>[];
-    for (final entry in decoded) {
+    for (final entry in rawList) {
       if (entry is! Map<String, dynamic>) continue;
       try {
         final backendRoom = BackendRoomInfo.fromJson(entry);

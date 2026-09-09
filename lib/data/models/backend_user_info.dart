@@ -1,3 +1,5 @@
+import '../json_coerce.dart';
+
 class BackendUserInfo {
   final String nick;
   final String color;
@@ -24,10 +26,10 @@ class BackendUserInfo {
     return BackendUserInfo(
       nick: nick,
       color: color,
-      joinedAt: json['joined_at'] as int? ?? 0,
-      typing: json['typing'] as bool? ?? false,
-      isHost: json['is_host'] as bool? ?? false,
-      voiceId: json['voice_id'] as int? ?? 0,
+      joinedAt: asInt(json['joined_at']) ?? 0,
+      typing: asBool(json['typing']) ?? false,
+      isHost: asBool(json['is_host']) ?? false,
+      voiceId: asInt(json['voice_id']) ?? 0,
     );
   }
 

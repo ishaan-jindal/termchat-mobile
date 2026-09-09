@@ -1,3 +1,5 @@
+import '../json_coerce.dart';
+
 class BackendRoomInfo {
   final String id;
   final int userCount;
@@ -18,8 +20,8 @@ class BackendRoomInfo {
     }
     return BackendRoomInfo(
       id: id,
-      userCount: json['user_count'] as int? ?? 0,
-      hasPassword: json['has_password'] as bool? ?? false,
+      userCount: asInt(json['user_count']) ?? 0,
+      hasPassword: asBool(json['has_password']) ?? false,
       hostNick: json['host_nick'] as String? ?? '',
     );
   }

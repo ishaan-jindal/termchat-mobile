@@ -84,13 +84,49 @@ void main() {
     });
 
     test('throws ApiParseException on unexpected shape', () async {
-      client = MockClient((_) async => http.Response('{"rooms":[]}', 200));
+      client = MockClient((_) async => http.Response('{"foo":1}', 200));
       repository = RoomRepositoryImpl(client);
 
       expect(
         () => repository.getActiveSessions(),
         throwsA(isA<ApiParseException>()),
       );
+    });
+
+    test('accepts a rooms envelope', () async {
+      client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'rooms': [
+              {'id': 'r1', 'user_count': 2},
+            ],
+          }),
+          200,
+        ),
+      );
+      repository = RoomRepositoryImpl(client);
+
+      final rooms = await repository.getActiveSessions();
+
+      expect(rooms, hasLength(1));
+      expect(rooms[0].id, 'r1');
+    });
+
+    test('server error carries a truncated body snippet', () async {
+      client = MockClient((_) async => http.Response('oops', 500));
+      repository = RoomRepositoryImpl(client);
+
+      Object? error;
+      try {
+        await repository.getActiveSessions();
+        fail('expected ApiServerException');
+      } catch (e) {
+        error = e;
+      }
+
+      expect(error, isA<ApiServerException>());
+      expect(error.toString(), contains('500'));
+      expect(error.toString(), contains('oops'));
     });
 
     test('throws ApiNetworkException on transport failure', () async {

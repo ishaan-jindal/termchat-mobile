@@ -1,3 +1,5 @@
+import '../json_coerce.dart';
+
 class BackendReaction {
   final String name;
   final int count;
@@ -9,7 +11,7 @@ class BackendReaction {
     if (name == null || name.isEmpty) {
       throw const FormatException('missing reaction name');
     }
-    return BackendReaction(name: name, count: json['count'] as int? ?? 0);
+    return BackendReaction(name: name, count: asInt(json['count']) ?? 0);
   }
 
   Map<String, dynamic> toJson() {

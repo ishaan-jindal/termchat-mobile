@@ -1,7 +1,9 @@
+import '../json_coerce.dart';
 import 'backend_reaction.dart';
 import 'backend_user_info.dart';
 
 class BackendMessage {
+  static const int maxBatchItems = 1000;
   final String type;
   final int? id;
   final String? nick;
@@ -43,7 +45,7 @@ class BackendMessage {
   factory BackendMessage.fromJson(Map<String, dynamic> json) {
     return BackendMessage(
       type: json['type'] as String? ?? 'unknown',
-      id: json['id'] as int?,
+      id: asInt(json['id']),
       nick: json['nick'] as String?,
       room: json['room'] as String?,
       text: json['text'] as String?,
@@ -51,9 +53,9 @@ class BackendMessage {
       color: json['color'] as String?,
       password: json['password'] as String?,
       token: json['token'] as String?,
-      timestamp: json['timestamp'] as int?,
-      serverTime: json['server_time'] as int?,
-      replyToId: json['reply_to_id'] as int?,
+      timestamp: asInt(json['timestamp']),
+      serverTime: asInt(json['server_time']),
+      replyToId: asInt(json['reply_to_id']),
       replyToNick: json['reply_to_nick'] as String?,
       replyToText: json['reply_to_text'] as String?,
       reactions: _parseList(json['reactions'], BackendReaction.fromJson),
@@ -63,7 +65,8 @@ class BackendMessage {
   }
 
   /// Parses a JSON list element-by-element, skipping malformed entries
-  /// instead of aborting the whole batch.
+  /// instead of aborting the whole batch. Capped so a pathological
+  /// history payload can't OOM the isolate.
   static List<T>? _parseList<T>(
     Object? raw,
     T Function(Map<String, dynamic>) fromJson,
@@ -72,6 +75,7 @@ class BackendMessage {
     if (raw is! List) return null;
     final out = <T>[];
     for (final e in raw) {
+      if (out.length >= maxBatchItems) break;
       if (e is! Map<String, dynamic>) continue;
       try {
         out.add(fromJson(e));
