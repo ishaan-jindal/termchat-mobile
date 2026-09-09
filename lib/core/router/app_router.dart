@@ -48,6 +48,16 @@ class AppRouter {
                         child: const ChatPage(),
                       );
                     },
+                    // System back / swipe-pop leaves the route without going
+                    // through /quit: release the bloc + socket here. No-op
+                    // when the room was already left explicitly.
+                    onExit: (context, state) {
+                      final roomId = state.pathParameters['roomId'];
+                      if (roomId != null) {
+                        _activeChatsManager.remove(roomId);
+                      }
+                      return true;
+                    },
                   ),
                 ],
               ),

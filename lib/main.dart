@@ -26,12 +26,14 @@ void main() async {
 
   final identityBloc = getIt<IdentityBloc>()..add(LoadIdentity());
   final settingsBloc = getIt<SettingsBloc>()..add(LoadSettings());
+  final roomsBloc = getIt<RoomsBloc>()..add(LoadActiveSessions());
   final appRouter = AppRouter(getIt<ActiveChatsManager>());
 
   runApp(
     TermchatApp(
       identityBloc: identityBloc,
       settingsBloc: settingsBloc,
+      roomsBloc: roomsBloc,
       appRouter: appRouter,
     ),
   );
@@ -46,12 +48,14 @@ void main() async {
 class TermchatApp extends StatelessWidget {
   final IdentityBloc identityBloc;
   final SettingsBloc settingsBloc;
+  final RoomsBloc roomsBloc;
   final AppRouter appRouter;
 
   const TermchatApp({
     super.key,
     required this.identityBloc,
     required this.settingsBloc,
+    required this.roomsBloc,
     required this.appRouter,
   });
 
@@ -61,9 +65,9 @@ class TermchatApp extends StatelessWidget {
       providers: [
         BlocProvider<SettingsBloc>.value(value: settingsBloc),
         BlocProvider<IdentityBloc>.value(value: identityBloc),
-        BlocProvider<RoomsBloc>(
-          create: (_) => getIt<RoomsBloc>()..add(LoadActiveSessions()),
-        ),
+        // App-scoped singleton owned by GetIt (never closed by the
+        // provider), matching Identity/Settings above.
+        BlocProvider<RoomsBloc>.value(value: roomsBloc),
       ],
       child: BlocBuilder<SettingsBloc, SettingsState>(
         buildWhen: (previous, current) =>

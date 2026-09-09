@@ -97,7 +97,7 @@ void main() {
     await reactionsController.close();
     await voiceActiveController.close();
     await voiceErrorsController.close();
-    manager.dispose();
+    await manager.dispose();
   });
 
   Future<void> pumpHarness(WidgetTester tester) async {
@@ -167,10 +167,13 @@ void main() {
       await pumpHarness(tester);
 
       when(() => repo.connect('BADP', any(), password: any(named: 'password')))
-          .thenAnswer((_) {
+          .thenAnswer((_) async {
             messagesController.addError('invalid_password');
-            // Real repo: the connection aborts and never reaches connected.
-            return Completer<void>().future;
+            // Real repo: the handshake completer errors, so connect()
+            // throws instead of hanging. Never return a pending future
+            // here: ChatBloc.close() awaits in-flight handlers and
+            // ActiveChatsManager.dispose() would hang forever.
+            throw 'invalid_password';
           });
 
       final context = tester.element(find.byType(Scaffold).first);

@@ -115,5 +115,18 @@ void main() {
         ]);
       });
     });
+
+    group('dispose', () {
+      test('closes tracked blocs and clears rooms', () async {
+        final first = manager.getOrCreate('room1');
+        final second = manager.getOrCreate('room2');
+
+        await manager.dispose();
+
+        expect(manager.activeRooms, isEmpty);
+        expect(first.isClosed, isTrue);
+        expect(second.isClosed, isTrue);
+      });
+    });
   });
 }

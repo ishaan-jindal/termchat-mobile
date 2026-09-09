@@ -60,7 +60,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i395.SettingsBloc>(),
       ),
     );
-    gh.factory<_i1055.RoomsBloc>(
+    gh.lazySingleton<_i1055.RoomsBloc>(
       () => _i1055.RoomsBloc(gh<_i949.RoomRepository>()),
     );
     return this;

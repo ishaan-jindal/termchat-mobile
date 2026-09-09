@@ -10,7 +10,7 @@ import '../repositories/room_repository.dart';
 part 'rooms_state.dart';
 part 'rooms_event.dart';
 
-@injectable
+@lazySingleton
 class RoomsBloc extends Bloc<RoomsEvent, RoomsState> {
   final RoomRepository _repository;
   Timer? _refreshTimer;

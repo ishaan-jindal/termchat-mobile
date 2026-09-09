@@ -56,7 +56,19 @@ class ActiveChatsManager {
     return _activeRooms[roomId];
   }
 
-  void dispose() {
+  /// Closes every tracked bloc (disconnecting sockets) and releases the
+  /// notifier. Only called when the manager itself is torn down.
+  Future<void> dispose() async {
+    final blocs = _activeRooms.values.toList();
+    _activeRooms.clear();
+    _updateNotifier();
+    for (final bloc in blocs) {
+      if (!bloc.isClosed) {
+        try {
+          await bloc.close();
+        } catch (_) {}
+      }
+    }
     _activeRoomsNotifier.dispose();
   }
 }
