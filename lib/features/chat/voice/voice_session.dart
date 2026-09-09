@@ -9,6 +9,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'audio_pipeline.dart';
 import 'media_frame.dart';
+import '../../../core/constants/app_constants.dart';
 
 /// Events surfaced from a [VoiceSession] to its owner.
 sealed class VoiceSessionEvent {}
@@ -70,7 +71,7 @@ class VoiceSession {
     // ignore: close_sinks, ownership transfers to VoiceSession.dispose.
     final socket =
         await WebSocket.connect(mediaEndpointUri(mediaUrl).toString()).timeout(
-          const Duration(seconds: 10),
+          AppConstants.mediaConnectTimeout,
           onTimeout: () => throw TimeoutException('media connect timed out'),
         );
     final channel = IOWebSocketChannel(socket);
@@ -87,9 +88,11 @@ class VoiceSession {
         onDone: session._onSocketDone,
       );
 
-      await session._handshake.future.timeout(const Duration(seconds: 10));
-      await session._startPlayback().timeout(const Duration(seconds: 5));
-      await session._openRecorder().timeout(const Duration(seconds: 5));
+      await session._handshake.future.timeout(
+        AppConstants.voiceHandshakeTimeout,
+      );
+      await session._startPlayback().timeout(AppConstants.voicePipelineTimeout);
+      await session._openRecorder().timeout(AppConstants.voicePipelineTimeout);
 
       session._playoutFuture = session._runPlayout();
 

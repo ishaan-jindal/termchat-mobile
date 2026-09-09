@@ -43,11 +43,17 @@ class RoomsBloc extends Bloc<RoomsEvent, RoomsState> {
     // update silently so the list does not flicker.
     final isInitialLoad = state.activeSessions.isEmpty && state.error == null;
     if (isInitialLoad) {
-      emit(state.copyWith(isLoading: true, error: null));
+      emit(state.copyWith(isLoading: true, clearError: true));
     }
     try {
       final sessions = await _repository.getActiveSessions();
-      emit(state.copyWith(activeSessions: sessions, isLoading: false));
+      emit(
+        state.copyWith(
+          activeSessions: sessions,
+          isLoading: false,
+          clearError: true,
+        ),
+      );
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }

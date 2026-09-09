@@ -260,7 +260,7 @@ class ChatRepositoryImpl implements ChatRepository {
     );
 
     return completer.future.timeout(
-      const Duration(seconds: 10),
+      AppConstants.wsJoinTimeout,
       onTimeout: () {
         _channelSub?.cancel();
         _channelSub = null;
@@ -496,7 +496,7 @@ class ChatRepositoryImpl implements ChatRepository {
     channel.sink.add(jsonEncode(BackendMessage(type: 'media_token').toJson()));
 
     final token = await completer.future.timeout(
-      const Duration(seconds: 5),
+      AppConstants.mediaTokenTimeout,
       onTimeout: () {
         // Only clear our own completer; a newer request may own the field.
         if (identical(_mediaTokenCompleter, completer)) {

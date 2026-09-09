@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/chat/bloc/chat_bloc.dart';
 import '../../features/chat/managers/active_chats_manager.dart';
 import '../../features/settings/bloc/identity/identity_bloc.dart';
+import '../constants/app_constants.dart';
 import '../widgets/password_prompt_modal.dart';
 
 class RoomJoinHelper {
@@ -57,7 +58,7 @@ class RoomJoinHelper {
     try {
       final result = await chatBloc.stream
           .firstWhere((s) => s.isConnected || s.error != null)
-          .timeout(const Duration(seconds: 15));
+          .timeout(AppConstants.roomJoinTimeout);
 
       if (!context.mounted) return false;
 

@@ -97,6 +97,20 @@ void main() {
         manager.remove('unknown');
         expect(manager.activeRooms, isEmpty);
       });
+
+      test('leaveRoom awaits full teardown', () async {
+        final bloc = manager.getOrCreate('room1');
+
+        await manager.leaveRoom('room1');
+
+        expect(manager.activeRooms, isEmpty);
+        expect(bloc.isClosed, isTrue);
+      });
+
+      test('leaveRoom is a no-op for unknown room', () async {
+        await manager.leaveRoom('unknown');
+        expect(manager.activeRooms, isEmpty);
+      });
     });
 
     group('activeRoomsListenable', () {

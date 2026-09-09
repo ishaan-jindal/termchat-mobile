@@ -18,6 +18,14 @@ class AppConstants {
   static const String discoverPath = '/discover';
   static const Duration httpTimeout = Duration(seconds: 10);
 
+  // --- Timeouts ---
+  static const Duration wsJoinTimeout = Duration(seconds: 10);
+  static const Duration mediaTokenTimeout = Duration(seconds: 5);
+  static const Duration roomJoinTimeout = Duration(seconds: 15);
+  static const Duration mediaConnectTimeout = Duration(seconds: 10);
+  static const Duration voiceHandshakeTimeout = Duration(seconds: 10);
+  static const Duration voicePipelineTimeout = Duration(seconds: 5);
+
   // ── Spacing ──
   static const double spacing2 = 2;
   static const double spacing4 = 4;

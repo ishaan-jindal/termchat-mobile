@@ -115,7 +115,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       );
 
       if (event.colorHex.isNotEmpty) {
-        add(SendMessage('/color ${event.colorHex}'));
+        await _applyColor(event.colorHex, emit);
       }
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
@@ -133,15 +133,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         final cmd = parts[0].toLowerCase();
 
         if (cmd == '/nick' && parts.length > 1) {
-          final newNick = parts.sublist(1).join(' ');
-          add(UpdateNickname(newNick));
+          await _applyNickname(parts.sublist(1).join(' '), emit);
           return;
         } else if (cmd == '/color' && parts.length > 1) {
-          add(UpdateColor(parts[1]));
+          await _applyColor(parts[1], emit);
           return;
         } else if (cmd == '/password') {
           final newPass = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-          add(SetRoomPassword(newPass));
+          await _applyPassword(newPass, emit);
           return;
         } else if (cmd == '/help') {
           final helpMsg = Message(
@@ -191,9 +190,13 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     UpdateNickname event,
     Emitter<ChatState> emit,
   ) async {
+    await _applyNickname(event.nickname, emit);
+  }
+
+  Future<void> _applyNickname(String nickname, Emitter<ChatState> emit) async {
     try {
-      await _repository.updateNickname(event.nickname);
-      _identityBloc.add(identity.UpdateNickname(event.nickname));
+      await _repository.updateNickname(nickname);
+      _identityBloc.add(identity.UpdateNickname(nickname));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }
@@ -203,9 +206,13 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     UpdateColor event,
     Emitter<ChatState> emit,
   ) async {
+    await _applyColor(event.colorHex, emit);
+  }
+
+  Future<void> _applyColor(String colorHex, Emitter<ChatState> emit) async {
     try {
-      await _repository.updateColor(event.colorHex);
-      _identityBloc.add(identity.UpdateColor(event.colorHex));
+      await _repository.updateColor(colorHex);
+      _identityBloc.add(identity.UpdateColor(colorHex));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }
@@ -215,8 +222,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     SetRoomPassword event,
     Emitter<ChatState> emit,
   ) async {
+    await _applyPassword(event.password, emit);
+  }
+
+  Future<void> _applyPassword(String password, Emitter<ChatState> emit) async {
     try {
-      await _repository.setPassword(event.password);
+      await _repository.setPassword(password);
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }
@@ -234,9 +245,10 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     SendReaction event,
     Emitter<ChatState> emit,
   ) async {
+    final previousReactions = state.myReactions;
     try {
       final key = '${event.messageId}:${event.name}';
-      final myReactions = Set<String>.from(state.myReactions);
+      final myReactions = Set<String>.from(previousReactions);
       if (myReactions.contains(key)) {
         myReactions.remove(key);
       } else {
@@ -245,7 +257,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       emit(state.copyWith(myReactions: myReactions));
       await _repository.sendReaction(event.messageId, event.name);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      // Revert the optimistic toggle so the UI matches the server.
+      emit(state.copyWith(myReactions: previousReactions, error: e.toString()));
     }
   }
 
@@ -269,11 +282,15 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     SetVoiceTransmit event,
     Emitter<ChatState> emit,
   ) async {
+    final previous = state.isVoiceTransmitting;
     try {
       await _repository.setVoiceTransmit(event.on);
       emit(state.copyWith(isVoiceTransmitting: event.on));
     } catch (e) {
-      emit(state.copyWith(voiceError: e.toString()));
+      // Revert the optimistic flag so the mic UI reflects reality.
+      emit(
+        state.copyWith(isVoiceTransmitting: previous, voiceError: e.toString()),
+      );
     }
   }
 

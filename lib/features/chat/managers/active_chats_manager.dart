@@ -41,6 +41,17 @@ class ActiveChatsManager {
     }
   }
 
+  /// Removes the room and awaits full teardown. Prefer over [remove] when
+  /// the caller stays alive (e.g. before navigating away) so no orphan
+  /// disconnect/close is left racing a rejoin.
+  Future<void> leaveRoom(String roomId) async {
+    final bloc = _activeRooms.remove(roomId);
+    if (bloc == null) return;
+    _updateNotifier();
+    bloc.add(DisconnectChat());
+    await _closeAfterDelay(bloc);
+  }
+
   Future<void> _closeAfterDelay(ChatBloc bloc) async {
     await Future<void>.delayed(const Duration(milliseconds: 500));
     if (!bloc.isClosed) {

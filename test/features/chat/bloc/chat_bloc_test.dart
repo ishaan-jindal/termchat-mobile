@@ -427,6 +427,16 @@ void main() {
 
         expect(chatBloc.state.messages.first.reactions, isEmpty);
       });
+
+      test('reverts optimistic toggle when send fails', () async {
+        when(() => mockRepo.sendReaction(any(), any()))
+            .thenThrow(Exception('nope'));
+
+        chatBloc.add(SendReaction(123, '+1'));
+        await waitForState(chatBloc, (s) => s.error != null);
+
+        expect(chatBloc.state.myReactions, isEmpty);
+      });
     });
 
     group('Voice', () {
@@ -468,6 +478,17 @@ void main() {
 
         await waitForState(chatBloc, (s) => s.isVoiceTransmitting);
         verify(() => mockRepo.setVoiceTransmit(true)).called(1);
+      });
+
+      test('SetVoiceTransmit reverts flag when set fails', () async {
+        when(() => mockRepo.setVoiceTransmit(true))
+            .thenThrow(Exception('nope'));
+
+        chatBloc.add(const SetVoiceTransmit(true));
+        await waitForState(chatBloc, (s) => s.voiceError != null);
+
+        expect(chatBloc.state.isVoiceTransmitting, isFalse);
+        expect(chatBloc.state.voiceError, isNotNull);
       });
 
       test('voiceActive stream mirrors into state', () async {
