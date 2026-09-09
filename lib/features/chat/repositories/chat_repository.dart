@@ -16,6 +16,14 @@ import '../voice/voice_session.dart';
 
 enum ConnectionStatus { disconnected, connecting, connected, reconnecting }
 
+/// Creates voice sessions; injected so tests can substitute fakes instead
+/// of dialing real media sockets and audio hardware.
+typedef VoiceSessionFactory = Future<VoiceSession> Function({
+  required String mediaUrl,
+  required String room,
+  required String token,
+});
+
 abstract class ChatRepository {
   Future<void> connect(String roomCode, String nick, {String? password});
   Future<void> disconnect();
@@ -42,17 +50,24 @@ abstract class ChatRepository {
 class ChatRepositoryImpl implements ChatRepository {
   static const int maxReconnectAttempts = 10;
   static const int maxQueuedMessages = 50;
+  static const int maxVoiceRejoinAttempts = 5;
+  static const Duration voiceRejoinDelay = Duration(seconds: 1);
 
-  ChatRepositoryImpl() : _channelFactory = WebSocketChannel.connect;
+  ChatRepositoryImpl()
+    : _channelFactory = WebSocketChannel.connect,
+      _voiceFactory = VoiceSession.connect;
 
   /// Test seam: inject a fake channel factory to avoid real sockets.
   @visibleForTesting
   ChatRepositoryImpl.forTest({
     required WebSocketChannel Function(Uri uri) channelFactory,
+    VoiceSessionFactory? voiceFactory,
     // ignore: prefer_initializing_formals, named for readability at call sites.
-  }) : _channelFactory = channelFactory;
+  }) : _channelFactory = channelFactory,
+       _voiceFactory = voiceFactory ?? VoiceSession.connect;
 
   final WebSocketChannel Function(Uri uri) _channelFactory;
+  final VoiceSessionFactory _voiceFactory;
 
   WebSocketChannel? _channel;
   final _messagesController = StreamController<Message>.broadcast();
@@ -72,6 +87,7 @@ class ChatRepositoryImpl implements ChatRepository {
   StreamSubscription<VoiceSessionEvent>? _voiceEventSub;
   bool _voiceWanted = false;
   bool _voiceRejoinPending = false;
+  int _voiceRejoinAttempts = 0;
   Completer<String>? _mediaTokenCompleter;
   ConnectionStatus _connectionStatus = ConnectionStatus.disconnected;
   bool _isDisposed = false;
@@ -417,24 +433,10 @@ class ChatRepositoryImpl implements ChatRepository {
     }
 
     _voiceWanted = true;
+    _voiceRejoinAttempts = 0;
 
     try {
-      final token = await _requestMediaToken();
-      final session = await VoiceSession.connect(
-        mediaUrl: AppConstants.mediaWsBaseUrl,
-        room: _roomCode!,
-        token: token,
-      );
-
-      if (_isDisposed) {
-        await session.dispose();
-
-        return;
-      }
-
-      _voice = session;
-      _voiceEventSub = session.events.listen(_onVoiceEvent);
-      _emitVoiceActive(true);
+      await _establishVoice();
     } catch (_) {
       _voiceWanted = false;
 
@@ -442,9 +444,34 @@ class ChatRepositoryImpl implements ChatRepository {
     }
   }
 
+  /// Dials the media session without touching the want/retry bookkeeping,
+  /// so rejoin attempts don't clear the user's intent on transient failure.
+  Future<void> _establishVoice() async {
+    final token = await _requestMediaToken();
+    final session = await _voiceFactory(
+      mediaUrl: AppConstants.mediaWsBaseUrl,
+      room: _roomCode!,
+      token: token,
+    );
+
+    if (_isDisposed) {
+      await session.dispose();
+
+      return;
+    }
+
+    _voice = session;
+    _voiceEventSub = session.events.listen(_onVoiceEvent);
+    _emitVoiceActive(true);
+  }
+
   @override
   Future<void> leaveVoice() async {
     _voiceWanted = false;
+    _voiceRejoinPending = false;
+    _voiceRejoinAttempts = 0;
+    _voiceRejoinTimer?.cancel();
+    _voiceRejoinTimer = null;
     await _closeVoiceSession();
   }
 
@@ -517,27 +544,52 @@ class ChatRepositoryImpl implements ChatRepository {
       _voice = null;
       _emitVoiceActive(false);
 
-      if (wasActive &&
-          _voiceWanted &&
-          !_voiceRejoinPending &&
-          _connectionStatus == ConnectionStatus.connected) {
+      // Keep the rejoin intent even while reconnecting: _maybeRejoinVoice
+      // retries once the socket is back instead of dropping voice silently.
+      if (wasActive && _voiceWanted && !_voiceRejoinPending) {
         _voiceRejoinPending = true;
-        _voiceRejoinTimer?.cancel();
-        _voiceRejoinTimer = Timer(const Duration(seconds: 1), () {
-          _voiceRejoinPending = false;
-          _maybeRejoinVoice();
-        });
+        _scheduleVoiceRejoin();
       }
     }
+  }
+
+  void _scheduleVoiceRejoin() {
+    _voiceRejoinTimer?.cancel();
+    if (_isDisposed) return;
+    _voiceRejoinTimer = Timer(voiceRejoinDelay, () {
+      _voiceRejoinPending = false;
+      unawaited(_maybeRejoinVoice());
+    });
   }
 
   Future<void> _maybeRejoinVoice() async {
     if (_isDisposed || !_voiceWanted || _voice != null) return;
 
+    if (_connectionStatus != ConnectionStatus.connected) {
+      // Offline: stay pending; the reconnect completion path retries.
+      _voiceRejoinPending = true;
+      return;
+    }
+
     try {
-      await joinVoice();
-    } catch (_) {
-      _voiceWanted = false;
+      await _establishVoice();
+      _voiceRejoinPending = false;
+      _voiceRejoinAttempts = 0;
+    } catch (e) {
+      _voiceRejoinAttempts++;
+      if (!_voiceErrorsController.isClosed) {
+        _voiceErrorsController.add(e.toString());
+      }
+      if (_voiceRejoinAttempts >= maxVoiceRejoinAttempts) {
+        // Bounded retries: give up instead of draining the battery in a
+        // 1s loop against a permanent failure (e.g. revoked mic).
+        _voiceWanted = false;
+        _voiceRejoinPending = false;
+        _voiceRejoinAttempts = 0;
+      } else {
+        _voiceRejoinPending = true;
+        _scheduleVoiceRejoin();
+      }
     }
   }
 
@@ -553,6 +605,7 @@ class ChatRepositoryImpl implements ChatRepository {
     _voiceRejoinTimer?.cancel();
     _voiceRejoinTimer = null;
     _voiceRejoinPending = false;
+    _voiceRejoinAttempts = 0;
     _pendingSends.clear();
     await _closeVoiceSession();
     _reconnectTimer?.cancel();

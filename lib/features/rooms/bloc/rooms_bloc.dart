@@ -12,14 +12,27 @@ part 'rooms_event.dart';
 
 @lazySingleton
 class RoomsBloc extends Bloc<RoomsEvent, RoomsState> {
+  static const Duration pollInterval = Duration(seconds: 30);
+
   final RoomRepository _repository;
   Timer? _refreshTimer;
 
   RoomsBloc(this._repository) : super(const RoomsState()) {
     on<LoadActiveSessions>(_onLoadActiveSessions);
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    on<StartPolling>(_onStartPolling);
+    on<StopPolling>(_onStopPolling);
+  }
+
+  void _onStartPolling(StartPolling event, Emitter<RoomsState> emit) {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(pollInterval, (_) {
       add(LoadActiveSessions());
     });
+  }
+
+  void _onStopPolling(StopPolling event, Emitter<RoomsState> emit) {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
   }
 
   Future<void> _onLoadActiveSessions(

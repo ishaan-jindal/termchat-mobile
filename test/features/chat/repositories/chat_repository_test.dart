@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:termchat_app/core/models/message.dart';
 import 'package:termchat_app/features/chat/repositories/chat_repository.dart';
+import 'package:termchat_app/features/chat/voice/voice_session.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// In-memory WebSocketChannel that records what the client sends and lets the
@@ -403,4 +405,118 @@ void main() {
       await secondExpectation;
     });
   });
+
+  group('voice rejoin', () {
+    late StreamController<VoiceSessionEvent> voiceEvents;
+    late MockVoiceSession voiceSession;
+    late int voiceFactoryCalls;
+    late bool failVoice;
+
+    setUp(() {
+      voiceEvents = StreamController<VoiceSessionEvent>.broadcast();
+      voiceSession = MockVoiceSession();
+      when(() => voiceSession.events).thenAnswer((_) => voiceEvents.stream);
+      when(() => voiceSession.dispose()).thenAnswer((_) async {});
+      voiceFactoryCalls = 0;
+      failVoice = false;
+      repo = ChatRepositoryImpl.forTest(
+        channelFactory: (_) {
+          final c = FakeWebSocketChannel();
+          channels.add(c);
+          return c;
+        },
+        voiceFactory:
+            ({
+              required String mediaUrl,
+              required String room,
+              required String token,
+            }) async {
+              voiceFactoryCalls++;
+              if (failVoice) throw StateError('mic dead');
+              return voiceSession;
+            },
+      );
+    });
+
+    tearDown(() async {
+      await voiceEvents.close();
+    });
+
+    /// Answers the in-flight media-token request, retrying until the factory
+    /// has been reached [count] times (spurious tokens with no pending
+    /// request are ignored by the repo).
+    Future<void> answerTokenUntil(int count) async {
+      for (var i = 0; i < 30; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        channel().serverSend(
+          jsonEncode({'type': 'media_token', 'token': 'tok$i'}),
+        );
+        await pump();
+        if (voiceFactoryCalls >= count) return;
+      }
+      fail('timed out waiting for a media-token request');
+    }
+
+    Future<void> joinVoiceFlow() async {
+      final target = voiceFactoryCalls + 1;
+      final join = repo.joinVoice();
+      await answerTokenUntil(target);
+      await join;
+      await pump();
+    }
+
+    test('Ended schedules a rejoin that reactivates voice', () async {
+      await connectAndHandshake();
+      await joinVoiceFlow();
+      expect(voiceFactoryCalls, 1);
+
+      final active = <bool>[];
+      final sub = repo.voiceActive.listen(active.add);
+
+      voiceEvents.add(VoiceSessionEnded());
+      await pump();
+      // Rejoin timer is 1s; the rejoin itself needs another token answer.
+      await Future<void>.delayed(const Duration(milliseconds: 1200));
+      await pump();
+      await answerTokenUntil(2);
+      await pump();
+
+      expect(voiceFactoryCalls, 2);
+      expect(active, contains(true));
+      await sub.cancel();
+    });
+
+    test('persistent rejoin failure surfaces errors then gives up', () async {
+      await connectAndHandshake();
+      await joinVoiceFlow();
+
+      final errors = <String>[];
+      final sub = repo.voiceErrors.listen(errors.add);
+
+      failVoice = true;
+      voiceEvents.add(VoiceSessionEnded());
+
+      // 5 bounded attempts, ~1s apart; keep answering tokens so each
+      // attempt reaches the (failing) factory instead of timing out.
+      for (var i = 0; i < 40 && voiceFactoryCalls < 6; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        channel().serverSend(
+          jsonEncode({'type': 'media_token', 'token': 't$i'}),
+        );
+        await pump();
+      }
+
+      expect(voiceFactoryCalls, 6); // 1 initial + 5 rejoins
+      expect(errors, hasLength(5));
+
+      // Intent cleared: no further attempts after the cap.
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      await pump();
+      expect(voiceFactoryCalls, 6);
+
+      await sub.cancel();
+    });
+  });
 }
+
+class MockVoiceSession extends Mock implements VoiceSession {}

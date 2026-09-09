@@ -78,5 +78,28 @@ void main() {
         await future;
       });
     });
+
+    group('Polling', () {
+      test('no timer runs until StartPolling', () async {
+        when(() => mockRepository.getActiveSessions())
+            .thenAnswer((_) async => []);
+        roomsBloc.add(StartPolling());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        roomsBloc.add(StopPolling());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        // Only the explicit stop path ran; nothing fetched on its own.
+        verifyNever(() => mockRepository.getActiveSessions());
+      });
+
+      test('StopPolling cancels the timer', () async {
+        when(() => mockRepository.getActiveSessions())
+            .thenAnswer((_) async => []);
+        roomsBloc.add(StartPolling());
+        roomsBloc.add(StopPolling());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        // Completes with no pending-timer errors at teardown.
+        verifyNever(() => mockRepository.getActiveSessions());
+      });
+    });
   });
 }

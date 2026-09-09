@@ -6,11 +6,32 @@ import '../../../core/utils/room_join_helper.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
 import '../../chat/bloc/chat_bloc.dart';
 import '../../chat/managers/active_chats_manager.dart';
+import '../bloc/rooms_bloc.dart';
 import '../widgets/active_session_card.dart';
 import '../widgets/join_another_room_form.dart';
 
-class RoomsPage extends StatelessWidget {
+class RoomsPage extends StatefulWidget {
   const RoomsPage({super.key});
+
+  @override
+  State<RoomsPage> createState() => _RoomsPageState();
+}
+
+class _RoomsPageState extends State<RoomsPage> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<RoomsBloc>().add(StartPolling());
+  }
+
+  @override
+  void dispose() {
+    // Bloc is app-scoped; only stop our polling, don't close it.
+    try {
+      context.read<RoomsBloc>().add(StopPolling());
+    } catch (_) {}
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
