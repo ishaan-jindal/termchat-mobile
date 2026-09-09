@@ -79,6 +79,7 @@ class _RoomActionCardState extends State<RoomActionCard> {
             controller: _controller,
             decoration: InputDecoration(
               hintText: '> e.g. FROG',
+              labelText: 'Room code',
               errorText: _errorText,
             ),
             style: textTheme.bodyLarge,

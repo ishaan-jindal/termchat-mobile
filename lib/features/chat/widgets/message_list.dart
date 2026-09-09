@@ -36,6 +36,14 @@ class _MessageListState extends State<MessageList> {
     }
   }
 
+  /// Only auto-scroll when the user is already near the bottom, so loading
+  /// history or receiving messages while reading doesn't yank the list.
+  bool get _isNearBottom {
+    if (!_scrollController.hasClients) return true;
+    final position = _scrollController.position;
+    return position.pixels >= position.maxScrollExtent - 200;
+  }
+
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -61,9 +69,9 @@ class _MessageListState extends State<MessageList> {
           previous.myReactions != current.myReactions ||
           previous.isConnected != current.isConnected,
       listener: (context, state) {
-        if (!mounted) return;
+        if (!mounted || !_isNearBottom) return;
         Future.delayed(const Duration(milliseconds: 50), () {
-          if (mounted) _scrollToBottom();
+          if (mounted && _isNearBottom) _scrollToBottom();
         });
       },
       builder: (context, state) {

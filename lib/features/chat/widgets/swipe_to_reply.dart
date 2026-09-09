@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 /// A swipe-right gesture that reveals a [background] affordance and triggers
@@ -30,6 +31,7 @@ class _SwipeToReplyState extends State<SwipeToReply>
   Animation<double>? _snapAnim;
   double _offset = 0;
   bool _triggered = false;
+  bool _isRtl = false;
 
   @override
   void initState() {
@@ -51,7 +53,10 @@ class _SwipeToReplyState extends State<SwipeToReply>
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
-    _offset = (_offset + details.delta.dx).clamp(0.0, widget.maxDrag);
+    // Swipe toward the leading edge in both directions: right in LTR,
+    // left in RTL.
+    final delta = _isRtl ? -details.delta.dx : details.delta.dx;
+    _offset = (_offset + delta).clamp(0.0, widget.maxDrag);
     if (_offset >= widget.triggerOffset && !_triggered) {
       _triggered = true;
       HapticFeedback.mediumImpact();
@@ -82,30 +87,38 @@ class _SwipeToReplyState extends State<SwipeToReply>
 
   @override
   Widget build(BuildContext context) {
+    _isRtl = Directionality.of(context) == TextDirection.rtl;
     final progress = (_offset / widget.maxDrag).clamp(0.0, 1.0);
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Positioned.fill(
           child: Align(
-            alignment: Alignment.centerLeft,
-            child: Opacity(
-              opacity: progress,
-              child: Transform.scale(
-                scale: 0.6 + 0.4 * progress,
-                child: widget.background,
+            alignment: _isRtl ? Alignment.centerRight : Alignment.centerLeft,
+            child: ExcludeSemantics(
+              child: Opacity(
+                opacity: progress,
+                child: Transform.scale(
+                  scale: 0.6 + 0.4 * progress,
+                  child: widget.background,
+                ),
               ),
             ),
           ),
         ),
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragStart: _onDragStart,
-          onHorizontalDragUpdate: _onDragUpdate,
-          onHorizontalDragEnd: _onDragEnd,
-          child: Transform.translate(
-            offset: Offset(_offset, 0),
-            child: widget.child,
+        Semantics(
+          customSemanticsActions: <CustomSemanticsAction, VoidCallback>{
+            CustomSemanticsAction(label: 'Reply'): widget.onReply,
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragStart: _onDragStart,
+            onHorizontalDragUpdate: _onDragUpdate,
+            onHorizontalDragEnd: _onDragEnd,
+            child: Transform.translate(
+              offset: Offset(_isRtl ? -_offset : _offset, 0),
+              child: widget.child,
+            ),
           ),
         ),
       ],

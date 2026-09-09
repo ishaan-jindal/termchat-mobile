@@ -79,6 +79,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                     textInputAction: TextInputAction.send,
                     decoration: const InputDecoration(
                       hintText: '> Type a message or /command',
+                      labelText: 'Message',
                     ),
                     style: textTheme.bodyLarge,
                     onSubmitted: (_) => _handleSend(),

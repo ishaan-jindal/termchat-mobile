@@ -63,6 +63,18 @@ class ChatPage extends StatelessWidget {
           (previous.error != current.error && current.error != null) ||
           (previous.voiceError != current.voiceError &&
               current.voiceError != null),
+      // Message bodies and reaction toggles are rendered by MessageList's
+      // own subscription; rebuilding the whole Scaffold (input field
+      // included) on every message is pure waste.
+      buildWhen: (previous, current) =>
+          previous.roomCode != current.roomCode ||
+          previous.users != current.users ||
+          previous.isLoading != current.isLoading ||
+          previous.connectionStatus != current.connectionStatus ||
+          previous.isConnected != current.isConnected ||
+          previous.isVoiceActive != current.isVoiceActive ||
+          previous.isVoiceTransmitting != current.isVoiceTransmitting ||
+          previous.replyingTo != current.replyingTo,
       listener: (context, state) async {
         if (state.voiceError != null) {
           ScaffoldMessenger.of(
@@ -105,11 +117,14 @@ class ChatPage extends StatelessWidget {
       builder: (context, state) {
         final roomName = state.roomCode ?? 'Loading...';
         final usersCount = state.users.length;
+        final colorScheme = Theme.of(context).colorScheme;
+        final textTheme = Theme.of(context).textTheme;
 
         return Scaffold(
           appBar: ChatTopBar(
             roomName: roomName,
             usersCount: usersCount,
+            connectionStatus: state.connectionStatus,
             onOpenDrawer: () => _openUsersDrawer(context, roomName),
             voiceActive: state.isVoiceActive,
             onToggleVoice: () => _toggleVoice(context, state.isVoiceActive),
@@ -119,23 +134,27 @@ class ChatPage extends StatelessWidget {
               if (state.isLoading) const LinearProgressIndicator(),
               if (state.connectionStatus == ConnectionStatus.reconnecting)
                 Container(
-                  color: Colors.orange.withValues(alpha: 0.1),
+                  color: colorScheme.tertiary.withValues(alpha: 0.12),
                   padding: const EdgeInsets.all(8.0),
-                  child: const Center(
+                  child: Center(
                     child: Text(
                       'Reconnecting...',
-                      style: TextStyle(color: Colors.orange),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.tertiary,
+                      ),
                     ),
                   ),
                 )
               else if (!state.isConnected && !state.isLoading)
                 Container(
-                  color: Colors.red.withValues(alpha: 0.1),
+                  color: colorScheme.error.withValues(alpha: 0.1),
                   padding: const EdgeInsets.all(8.0),
-                  child: const Center(
+                  child: Center(
                     child: Text(
                       'Disconnected',
-                      style: TextStyle(color: Colors.red),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.error,
+                      ),
                     ),
                   ),
                 ),

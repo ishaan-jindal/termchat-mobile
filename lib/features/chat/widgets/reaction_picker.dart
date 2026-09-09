@@ -12,7 +12,14 @@ void showReactionPicker(
   showModalBottomSheet<void>(
     context: context,
     builder: (context) {
-      return Padding(
+      final theme = Theme.of(context);
+      return Container(
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppConstants.radius16),
+          ),
+        ),
         padding: const EdgeInsets.symmetric(
           vertical: AppConstants.spacing14,
           horizontal: AppConstants.spacing24,

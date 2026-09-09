@@ -124,7 +124,10 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
             TextField(
               controller: _passwordController,
               obscureText: _obscureText,
-              decoration: const InputDecoration(hintText: '> ********'),
+              decoration: const InputDecoration(
+                hintText: '> ********',
+                labelText: 'Password',
+              ),
               style: textTheme.bodyLarge,
               onSubmitted: (_) => _handleJoin(),
             ),

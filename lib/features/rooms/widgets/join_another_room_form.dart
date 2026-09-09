@@ -50,6 +50,7 @@ class _JoinAnotherRoomFormState extends State<JoinAnotherRoomForm> {
           controller: _controller,
           decoration: InputDecoration(
             hintText: '> room code',
+            labelText: 'Room code',
             errorText: _errorText,
           ),
           style: textTheme.bodyLarge,

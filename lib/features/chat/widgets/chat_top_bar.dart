@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../repositories/chat_repository.dart';
 
 class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
   final String roomName;
   final int usersCount;
+  final ConnectionStatus connectionStatus;
   final VoidCallback onOpenDrawer;
   final bool voiceActive;
   final VoidCallback? onToggleVoice;
@@ -13,6 +15,7 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     required this.roomName,
     required this.usersCount,
+    this.connectionStatus = ConnectionStatus.connected,
     required this.onOpenDrawer,
     this.voiceActive = false,
     this.onToggleVoice,
@@ -22,6 +25,13 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+
+    final statusLabel = switch (connectionStatus) {
+      ConnectionStatus.connected => 'connected',
+      ConnectionStatus.connecting => 'connecting...',
+      ConnectionStatus.reconnecting => 'reconnecting...',
+      ConnectionStatus.disconnected => 'disconnected',
+    };
 
     return AppBar(
       titleSpacing: AppConstants.spacing24,
@@ -50,20 +60,23 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
               const SizedBox(width: AppConstants.spacing8),
-              Text('connected', style: textTheme.bodySmall),
+              Text(statusLabel, style: textTheme.bodySmall),
             ],
           ),
         ],
       ),
       actions: [
         if (onToggleVoice != null)
-          IconButton(
-            onPressed: onToggleVoice,
-            tooltip: voiceActive ? 'Leave voice' : 'Join voice',
-            icon: Icon(voiceActive ? Icons.mic : Icons.mic_none),
-            color: voiceActive
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurfaceVariant,
+          Semantics(
+            selected: voiceActive,
+            child: IconButton(
+              onPressed: onToggleVoice,
+              tooltip: voiceActive ? 'Leave voice' : 'Join voice',
+              icon: Icon(voiceActive ? Icons.mic : Icons.mic_none),
+              color: voiceActive
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         TextButton(
           onPressed: onOpenDrawer,
