@@ -72,6 +72,102 @@ void main() {
         expect(msg.color, '#FF0000');
         expect(msg.password, 'secret');
       });
+
+      test('missing type defaults to unknown instead of throwing', () {
+        final msg = BackendMessage.fromJson({'nick': 'Alice'});
+
+        expect(msg.type, 'unknown');
+      });
+
+      test('skips malformed entries instead of aborting batch', () {
+        final json = {
+          'type': 'history',
+          'messages': [
+            {'type': 'chat', 'nick': 'Alice', 'text': 'Hi'},
+            {'type': 'chat', 'nick': 'Bob', 'text': 'Hey'},
+            'not-a-map',
+            {'type': 'chat', 'nick': 'Cara', 'text': 'Yo'},
+          ],
+        };
+
+        final msg = BackendMessage.fromJson(json);
+
+        expect(msg.messages, hasLength(3));
+      });
+
+      test('skips users with missing nick/color', () {
+        final json = {
+          'type': 'users_list',
+          'users': [
+            {'nick': 'Alice', 'color': '#FF0000'},
+            {'nick': '', 'color': '#00FF00'},
+            {'color': '#0000FF'},
+            {'nick': 'Bob', 'color': '#00FF00'},
+          ],
+        };
+
+        final msg = BackendMessage.fromJson(json);
+
+        expect(msg.users, hasLength(2));
+        expect(msg.users![0].nick, 'Alice');
+        expect(msg.users![1].nick, 'Bob');
+      });
+
+      test('coerces string numbers and bools', () {
+        final json = {
+          'type': 'chat',
+          'id': '7',
+          'timestamp': '1700000000000',
+          'reply_to_id': '3',
+          'users': [
+            {
+              'nick': 'Alice',
+              'color': '#FF0000',
+              'joined_at': '1700000000',
+              'typing': 1,
+              'is_host': 'true',
+              'voice_id': '9',
+            },
+          ],
+        };
+
+        final msg = BackendMessage.fromJson(json);
+
+        expect(msg.id, 7);
+        expect(msg.timestamp, 1700000000000);
+        expect(msg.replyToId, 3);
+        expect(msg.users![0].joinedAt, 1700000000);
+        expect(msg.users![0].typing, isTrue);
+        expect(msg.users![0].isHost, isTrue);
+        expect(msg.users![0].voiceId, 9);
+      });
+
+      test('caps pathological batches', () {
+        final json = {
+          'type': 'history',
+          'messages': List.generate(
+            BackendMessage.maxBatchItems + 500,
+            (i) => {'type': 'chat', 'nick': 'A', 'text': 'm$i'},
+          ),
+        };
+
+        final msg = BackendMessage.fromJson(json);
+
+        expect(msg.messages, hasLength(BackendMessage.maxBatchItems));
+      });
+
+      test('coerces non-string scalars instead of throwing', () {
+        final msg = BackendMessage.fromJson({
+          'type': 'chat',
+          'nick': 123,
+          'text': 456,
+          'room': true,
+        });
+
+        expect(msg.nick, '123');
+        expect(msg.text, '456');
+        expect(msg.room, 'true');
+      });
     });
 
     group('toJson', () {

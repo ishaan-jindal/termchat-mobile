@@ -102,4 +102,64 @@ void main() {
       expect(uri.host, 'termchat.sacred99.online');
     });
   });
+
+  group('isPlayableAudioFrame', () {
+    MediaFrame playable({int payloadBytes = audioChunkBytes, int voiceId = 7}) {
+      return MediaFrame(
+        kind: mediaKindAudio,
+        codec: mediaCodecPcm16,
+        voiceId: voiceId,
+        payload: Uint8List(payloadBytes),
+      );
+    }
+
+    test('accepts an exact-size audio frame', () {
+      expect(isPlayableAudioFrame(playable()), isTrue);
+    });
+
+    test('rejects null', () {
+      expect(isPlayableAudioFrame(null), isFalse);
+    });
+
+    test('rejects short even payloads that would RangeError the mixer', () {
+      expect(isPlayableAudioFrame(playable(payloadBytes: 1278)), isFalse);
+    });
+
+    test('rejects odd payloads', () {
+      expect(isPlayableAudioFrame(playable(payloadBytes: 1279)), isFalse);
+    });
+
+    test('rejects long payloads that would silently truncate', () {
+      expect(
+        isPlayableAudioFrame(playable(payloadBytes: audioChunkBytes + 2)),
+        isFalse,
+      );
+    });
+
+    test('rejects zero voice ID, wrong kind and wrong codec', () {
+      expect(isPlayableAudioFrame(playable(voiceId: 0)), isFalse);
+      expect(
+        isPlayableAudioFrame(
+          MediaFrame(
+            kind: mediaKindVideo,
+            codec: mediaCodecPcm16,
+            voiceId: 7,
+            payload: Uint8List(audioChunkBytes),
+          ),
+        ),
+        isFalse,
+      );
+      expect(
+        isPlayableAudioFrame(
+          MediaFrame(
+            kind: mediaKindAudio,
+            codec: 0x99,
+            voiceId: 7,
+            payload: Uint8List(audioChunkBytes),
+          ),
+        ),
+        isFalse,
+      );
+    });
+  });
 }

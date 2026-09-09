@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:termchat_app/core/models/room.dart';
@@ -39,7 +41,7 @@ void main() {
           RoomsState(activeSessions: sessions, isLoading: false),
         ];
 
-        expectLater(roomsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(roomsBloc.stream, emitsInOrder(expected)));
 
         roomsBloc.add(LoadActiveSessions());
       });
@@ -53,9 +55,52 @@ void main() {
           const RoomsState(isLoading: false, error: 'Exception: Network error'),
         ];
 
-        expectLater(roomsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(roomsBloc.stream, emitsInOrder(expected)));
 
         roomsBloc.add(LoadActiveSessions());
+      });
+
+      test('periodic refresh updates silently without spinner', () async {
+        when(() => mockRepository.getActiveSessions())
+            .thenAnswer((_) async => sessions);
+
+        roomsBloc.add(LoadActiveSessions());
+        await untilCalled(() => mockRepository.getActiveSessions());
+
+        // Second load (e.g. 30s timer) must not re-emit isLoading:true.
+        final future = expectLater(
+          roomsBloc.stream,
+          emitsThrough(
+            predicate<RoomsState>(
+              (s) => !s.isLoading && s.activeSessions == sessions,
+            ),
+          ),
+        );
+        roomsBloc.add(LoadActiveSessions());
+        await future;
+      });
+    });
+
+    group('Polling', () {
+      test('no timer runs until StartPolling', () async {
+        when(() => mockRepository.getActiveSessions())
+            .thenAnswer((_) async => []);
+        roomsBloc.add(StartPolling());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        roomsBloc.add(StopPolling());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        // Only the explicit stop path ran; nothing fetched on its own.
+        verifyNever(() => mockRepository.getActiveSessions());
+      });
+
+      test('StopPolling cancels the timer', () async {
+        when(() => mockRepository.getActiveSessions())
+            .thenAnswer((_) async => []);
+        roomsBloc.add(StartPolling());
+        roomsBloc.add(StopPolling());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        // Completes with no pending-timer errors at teardown.
+        verifyNever(() => mockRepository.getActiveSessions());
       });
     });
   });

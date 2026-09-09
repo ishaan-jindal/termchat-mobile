@@ -15,11 +15,12 @@ class RoomsState extends Equatable {
     List<Room>? activeSessions,
     bool? isLoading,
     String? error,
+    bool clearError = false,
   }) {
     return RoomsState(
       activeSessions: activeSessions ?? this.activeSessions,
       isLoading: isLoading ?? this.isLoading,
-      error: error,
+      error: clearError ? null : (error ?? this.error),
     );
   }
 

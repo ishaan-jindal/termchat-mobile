@@ -2,19 +2,16 @@ import 'dart:typed_data';
 
 import 'media_frame.dart';
 
-/// Minimum sample magnitude treated as speech for activity lights; open-mic
-/// room tone stays below it.
+/// Speech threshold for activity lights (above room tone).
 const int voicePeakThreshold = 700;
 
-/// Accumulates variable-size raw PCM chunks from the recorder and splits
-/// them into fixed-size protocol frames, keeping any remainder buffered.
+/// Splits variable PCM chunks into fixed protocol frames.
 class PcmChunkAssembler {
   final int chunkSize;
   final BytesBuilder _builder = BytesBuilder();
 
   PcmChunkAssembler({this.chunkSize = audioChunkBytes});
 
-  /// Appends raw PCM bytes and returns any complete chunks.
   List<Uint8List> add(List<int> data) {
     _builder.add(data);
     final bytes = _builder.takeBytes();
@@ -34,7 +31,6 @@ class PcmChunkAssembler {
   }
 }
 
-/// Buffers one speaker's audio chunks in arrival order.
 class ChunkRing {
   final int capacity;
   final List<Uint8List> _chunks = [];
@@ -85,10 +81,7 @@ class VoiceMixer {
 
   int get speakerCount => _rings.length;
 
-  /// Mixes one chunk per non-stale ring into a single chunk. Returns null
-  /// while nothing has ever been received so the player stays silent until
-  /// the first frame arrives; after that it always feeds (silence when idle)
-  /// to keep the stream player from underflowing.
+  /// Mixes non-stale rings; null until first frame, silence after.
   Uint8List? mix(DateTime now) {
     if (!_started) return null;
 
@@ -116,14 +109,8 @@ class VoiceMixer {
 
     return mix;
   }
-
-  void clear() {
-    _rings.clear();
-    _started = false;
-  }
 }
 
-/// Largest sample magnitude in a PCM chunk; used for TX/RX activity lights.
 int chunkPeak(Uint8List chunk) {
   final data = ByteData.view(chunk.buffer, chunk.offsetInBytes, chunk.length);
   var peak = 0;

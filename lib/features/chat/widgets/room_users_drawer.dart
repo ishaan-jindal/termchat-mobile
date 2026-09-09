@@ -7,20 +7,24 @@ import '../../../core/utils/color_utils.dart';
 import '../bloc/chat_bloc.dart';
 import '../managers/active_chats_manager.dart';
 
+/// Humanizes a unix join timestamp. `now` is injectable for tests.
+String formatJoinTime(int timestampSecs, DateTime now) {
+  if (timestampSecs == 0) return 'recently';
+  final joinedAt = DateTime.fromMillisecondsSinceEpoch(timestampSecs * 1000);
+  final diff = now.difference(joinedAt);
+  if (diff.inMinutes < 1) return 'just now';
+  if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+  if (diff.inDays < 1) return '${diff.inHours}h ago';
+  return '${diff.inDays}d ago';
+}
+
 class RoomUsersDrawer extends StatelessWidget {
   final String roomName;
 
   const RoomUsersDrawer({super.key, required this.roomName});
 
-  String _formatJoinTime(int timestampSecs) {
-    if (timestampSecs == 0) return 'recently';
-    final joinedAt = DateTime.fromMillisecondsSinceEpoch(timestampSecs * 1000);
-    final diff = DateTime.now().difference(joinedAt);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
+  String _formatJoinTime(int timestampSecs) =>
+      formatJoinTime(timestampSecs, DateTime.now());
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +32,7 @@ class RoomUsersDrawer extends StatelessWidget {
     final textTheme = theme.textTheme;
 
     return BlocBuilder<ChatBloc, ChatState>(
+      buildWhen: (previous, current) => previous.users != current.users,
       builder: (context, state) {
         return Container(
           decoration: BoxDecoration(
@@ -49,7 +54,14 @@ class RoomUsersDrawer extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('users in $roomName', style: textTheme.bodySmall),
+                    Expanded(
+                      child: Text(
+                        'users in $roomName',
+                        style: textTheme.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     Text(
                       '${state.users.length} online',
                       style: textTheme.bodySmall,
@@ -67,22 +79,33 @@ class RoomUsersDrawer extends StatelessWidget {
                       ),
                     ),
                   ),
-                ...state.users.map((user) {
-                  return Padding(
-                    padding: const EdgeInsets.only(
-                      bottom: AppConstants.spacing16,
+                if (state.users.isNotEmpty)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 320),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: state.users.length,
+                      itemBuilder: (context, index) {
+                        final user = state.users[index];
+                        return Padding(
+                          key: ValueKey(user.nick),
+                          padding: const EdgeInsets.only(
+                            bottom: AppConstants.spacing16,
+                          ),
+                          child: _buildUserRow(
+                            context: context,
+                            username: user.nick,
+                            color: ColorUtils.parseHexColor(user.color),
+                            isHost: user.isHost,
+                            isTyping: user.typing,
+                            isInVoice: user.voiceId != 0,
+                            metaText:
+                                'joined ${_formatJoinTime(user.joinedAt)}',
+                          ),
+                        );
+                      },
                     ),
-                    child: _buildUserRow(
-                      context: context,
-                      username: user.nick,
-                      color: ColorUtils.parseHexColor(user.color),
-                      isHost: user.isHost,
-                      isTyping: user.typing,
-                      isInVoice: user.voiceId != 0,
-                      metaText: '· joined ${_formatJoinTime(user.joinedAt)}',
-                    ),
-                  );
-                }),
+                  ),
                 const SizedBox(height: AppConstants.spacing16),
                 OutlinedButton(
                   onPressed: () {
@@ -91,8 +114,8 @@ class RoomUsersDrawer extends StatelessWidget {
                     if (roomCode.isNotEmpty) {
                       context.read<ActiveChatsManager>().remove(roomCode);
                     }
-                    Navigator.pop(context); // close bottom sheet
-                    context.go('/'); // Go back to home
+                    Navigator.pop(context);
+                    context.go('/');
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
@@ -121,6 +144,9 @@ class RoomUsersDrawer extends StatelessWidget {
     required String metaText,
   }) {
     final textTheme = Theme.of(context).textTheme;
+    final onAvatar = color.computeLuminance() > 0.5
+        ? Colors.black
+        : Colors.white;
 
     return Row(
       children: [
@@ -132,98 +158,115 @@ class RoomUsersDrawer extends StatelessWidget {
           child: Text(
             username.isNotEmpty ? username.substring(0, 1).toUpperCase() : '?',
             style: textTheme.labelSmall?.copyWith(
-              color: Colors.white,
+              color: onAvatar,
               fontWeight: FontWeight.bold,
-              fontSize: 12,
             ),
           ),
         ),
         const SizedBox(width: AppConstants.spacing12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  username,
-                  style: textTheme.titleMedium?.copyWith(color: color),
-                ),
-                if (isHost) ...[
-                  const SizedBox(width: AppConstants.spacing4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).dividerColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
                     child: Text(
-                      '[host]',
-                      style: textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 9,
-                      ),
+                      username,
+                      style: textTheme.titleMedium?.copyWith(color: color),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ],
-                if (isTyping) ...[
-                  const SizedBox(width: AppConstants.spacing4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).dividerColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'typing...',
-                      style: textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 9,
+                  if (isHost) ...[
+                    const SizedBox(width: AppConstants.spacing4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
                       ),
-                    ),
-                  ),
-                ],
-                if (isInVoice) ...[
-                  const SizedBox(width: AppConstants.spacing4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).dividerColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.mic,
-                          size: 9,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '[host]',
+                        style: textTheme.labelSmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
-                        const SizedBox(width: 2),
-                        Text(
-                          'vc',
+                      ),
+                    ),
+                  ],
+                  if (isTyping) ...[
+                    const SizedBox(width: AppConstants.spacing4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Semantics(
+                        liveRegion: true,
+                        label: '$username is typing',
+                        child: Text(
+                          'typing...',
                           style: textTheme.labelSmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 9,
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
+                  if (isInVoice) ...[
+                    const SizedBox(width: AppConstants.spacing4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.mic,
+                            size: 12,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            'vc',
+                            style: textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(metaText, style: textTheme.bodySmall),
-          ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                metaText,
+                style: textTheme.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ],
     );

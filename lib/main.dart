@@ -1,35 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
-import 'di/injection.dart';
-import 'core/constants/app_constants.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_lifecycle_tracker.dart';
 import 'core/utils/notification_helper.dart';
+import 'di/injection.dart';
+import 'features/chat/managers/active_chats_manager.dart';
+import 'features/rooms/bloc/rooms_bloc.dart';
 import 'features/settings/bloc/identity/identity_bloc.dart';
 import 'features/settings/bloc/settings/settings_bloc.dart';
-import 'features/rooms/bloc/rooms_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   configureDependencies();
 
-  final packageInfo = await PackageInfo.fromPlatform();
-  AppConstants.appVersion = packageInfo.version;
-
-  // Initialize lifecycle tracker and notifications setup
   AppLifecycleTracker.instance.init();
   await NotificationHelper.initialize();
 
   final identityBloc = getIt<IdentityBloc>()..add(LoadIdentity());
   final settingsBloc = getIt<SettingsBloc>()..add(LoadSettings());
+  final roomsBloc = getIt<RoomsBloc>()..add(LoadActiveSessions());
+  final appRouter = AppRouter(getIt<ActiveChatsManager>());
 
-  runApp(TermchatApp(identityBloc: identityBloc, settingsBloc: settingsBloc));
+  runApp(
+    TermchatApp(
+      identityBloc: identityBloc,
+      settingsBloc: settingsBloc,
+      roomsBloc: roomsBloc,
+      appRouter: appRouter,
+    ),
+  );
 
-  // Prompt for notification permission after the first frame so the system
-  // dialog never covers a blank screen or blocks startup.
+  // Defer the permission prompt until after the first frame.
   WidgetsBinding.instance.addPostFrameCallback((_) {
     NotificationHelper.requestNotificationPermissionIfNeeded();
   });
@@ -38,11 +41,15 @@ void main() async {
 class TermchatApp extends StatelessWidget {
   final IdentityBloc identityBloc;
   final SettingsBloc settingsBloc;
+  final RoomsBloc roomsBloc;
+  final AppRouter appRouter;
 
   const TermchatApp({
     super.key,
     required this.identityBloc,
     required this.settingsBloc,
+    required this.roomsBloc,
+    required this.appRouter,
   });
 
   @override
@@ -51,9 +58,8 @@ class TermchatApp extends StatelessWidget {
       providers: [
         BlocProvider<SettingsBloc>.value(value: settingsBloc),
         BlocProvider<IdentityBloc>.value(value: identityBloc),
-        BlocProvider<RoomsBloc>(
-          create: (_) => getIt<RoomsBloc>()..add(LoadActiveSessions()),
-        ),
+        // GetIt-owned; never closed by the provider.
+        BlocProvider<RoomsBloc>.value(value: roomsBloc),
       ],
       child: BlocBuilder<SettingsBloc, SettingsState>(
         buildWhen: (previous, current) =>
@@ -72,7 +78,7 @@ class TermchatApp extends StatelessWidget {
             themeMode: themeMode,
             theme: AppTheme.light(fontSize: settingsState.fontSize),
             darkTheme: AppTheme.dark(fontSize: settingsState.fontSize),
-            routerConfig: AppRouter.router,
+            routerConfig: appRouter.router,
           );
         },
       ),

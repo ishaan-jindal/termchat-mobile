@@ -28,5 +28,27 @@ void main() {
       final color = ColorUtils.parseHexColor('#ZZZZZZ');
       expect(color, const Color(0xFFFFFFFF));
     });
+
+    test('expands 3-char shorthand', () {
+      expect(ColorUtils.parseHexColor('#F00'), const Color(0xFFFF0000));
+      expect(ColorUtils.parseHexColor('0F0'), const Color(0xFF00FF00));
+    });
+
+    test('rejects partial hex instead of misparsing', () {
+      // Old code parsed 'F00' as 0xF00 (near-transparent black).
+      expect(ColorUtils.parseHexColor('F00'), const Color(0xFFFF0000));
+      expect(ColorUtils.parseHexColor('#12345'), const Color(0xFFFFFFFF));
+    });
+  });
+
+  group('ColorUtils.tryParseHexColor', () {
+    test('accepts valid colors', () {
+      expect(ColorUtils.tryParseHexColor('#FF0000'), const Color(0xFFFF0000));
+    });
+
+    test('returns null for garbage', () {
+      expect(ColorUtils.tryParseHexColor('nope'), isNull);
+      expect(ColorUtils.tryParseHexColor(''), isNull);
+    });
   });
 }

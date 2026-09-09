@@ -1,7 +1,4 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:termchat_app/features/chat/bloc/chat_bloc.dart';
 import 'package:termchat_app/features/chat/managers/active_chats_manager.dart';
@@ -36,13 +33,10 @@ void main() {
   late ActiveChatsManager manager;
 
   setUp(() {
-    GetIt.instance.registerFactory<ChatBloc>(createTestChatBloc);
-    manager = ActiveChatsManager();
+    manager = ActiveChatsManager(createTestChatBloc);
   });
 
-  tearDown(() {
-    GetIt.instance.reset();
-  });
+  tearDown(() {});
 
   group('ActiveChatsManager', () {
     test('starts with no active rooms', () {
@@ -103,6 +97,20 @@ void main() {
         manager.remove('unknown');
         expect(manager.activeRooms, isEmpty);
       });
+
+      test('leaveRoom awaits full teardown', () async {
+        final bloc = manager.getOrCreate('room1');
+
+        await manager.leaveRoom('room1');
+
+        expect(manager.activeRooms, isEmpty);
+        expect(bloc.isClosed, isTrue);
+      });
+
+      test('leaveRoom is a no-op for unknown room', () async {
+        await manager.leaveRoom('unknown');
+        expect(manager.activeRooms, isEmpty);
+      });
     });
 
     group('activeRoomsListenable', () {
@@ -119,6 +127,19 @@ void main() {
           ['room1'],
           ['room1', 'room2'],
         ]);
+      });
+    });
+
+    group('dispose', () {
+      test('closes tracked blocs and clears rooms', () async {
+        final first = manager.getOrCreate('room1');
+        final second = manager.getOrCreate('room2');
+
+        await manager.dispose();
+
+        expect(manager.activeRooms, isEmpty);
+        expect(first.isClosed, isTrue);
+        expect(second.isClosed, isTrue);
       });
     });
   });

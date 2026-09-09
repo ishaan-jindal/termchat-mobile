@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../bloc/chat_bloc.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
+import '../bloc/chat_bloc.dart';
 import 'chat_message_bubble.dart';
 import 'reaction_picker.dart';
 import 'swipe_to_reply.dart';
@@ -18,6 +18,7 @@ class MessageList extends StatefulWidget {
 class _MessageListState extends State<MessageList> {
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _messageKeys = {};
+  int _prunedForLength = 0;
 
   @override
   void dispose() {
@@ -36,6 +37,13 @@ class _MessageListState extends State<MessageList> {
     }
   }
 
+  /// Only auto-scroll when already near the bottom.
+  bool get _isNearBottom {
+    if (!_scrollController.hasClients) return true;
+    final position = _scrollController.position;
+    return position.pixels >= position.maxScrollExtent - 200;
+  }
+
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -48,17 +56,23 @@ class _MessageListState extends State<MessageList> {
 
   @override
   Widget build(BuildContext context) {
-    final identityState = context.watch<IdentityBloc>().state;
-    String myNick = '';
-    if (identityState is IdentityLoaded) {
-      myNick = identityState.user.nickname;
-    }
+    final myNick = context.select<IdentityBloc, String>((bloc) {
+      final s = bloc.state;
+      return s is IdentityLoaded ? s.user.nickname : '';
+    });
 
     return BlocConsumer<ChatBloc, ChatState>(
       listenWhen: (previous, current) =>
           previous.messages.length != current.messages.length,
+      buildWhen: (previous, current) =>
+          previous.messages != current.messages ||
+          previous.myReactions != current.myReactions ||
+          previous.isConnected != current.isConnected,
       listener: (context, state) {
-        Future.delayed(const Duration(milliseconds: 50), _scrollToBottom);
+        if (!mounted || !_isNearBottom) return;
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted && _isNearBottom) _scrollToBottom();
+        });
       },
       builder: (context, state) {
         final messages = state.messages;
@@ -72,10 +86,19 @@ class _MessageListState extends State<MessageList> {
           );
         }
 
+        // Prune keys for evicted messages on length change only.
+        if (messages.length != _prunedForLength) {
+          _prunedForLength = messages.length;
+          final ids = messages.map((m) => m.id).toSet();
+          _messageKeys.removeWhere((id, _) => !ids.contains(id));
+        }
+
         return ListView.separated(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(vertical: AppConstants.spacing24),
           itemCount: messages.length,
+          addAutomaticKeepAlives: false,
+          addRepaintBoundaries: true,
           separatorBuilder: (context, index) =>
               const SizedBox(height: AppConstants.spacing14),
           itemBuilder: (context, index) {
@@ -167,6 +190,7 @@ class _MessageListState extends State<MessageList> {
           Expanded(
             child: Text(
               '· $text ·',
+              semanticsLabel: text,
               style: textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),

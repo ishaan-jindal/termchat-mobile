@@ -1,18 +1,36 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../data/models/backend_message.dart';
-import '../../../data/models/backend_user_info.dart';
 import '../../../core/models/message.dart';
 import '../../../core/models/reaction.dart';
+import '../../../data/models/backend_message.dart';
+import '../../../data/models/backend_user_info.dart';
 import '../models/reaction_update.dart';
 import '../voice/voice_session.dart';
 
 enum ConnectionStatus { disconnected, connecting, connected, reconnecting }
+
+/// Rejected room password. toString stays 'invalid_password' so existing
+/// string checks keep working while callers can match on the type.
+class InvalidPasswordException implements Exception {
+  const InvalidPasswordException();
+
+  @override
+  String toString() => 'invalid_password';
+}
+
+/// VoiceSession factory (fakeable in tests).
+typedef VoiceSessionFactory = Future<VoiceSession> Function({
+  required String mediaUrl,
+  required String room,
+  required String token,
+});
 
 abstract class ChatRepository {
   Future<void> connect(String roomCode, String nick, {String? password});
@@ -38,6 +56,27 @@ abstract class ChatRepository {
 
 @Injectable(as: ChatRepository)
 class ChatRepositoryImpl implements ChatRepository {
+  static const int maxReconnectAttempts = 10;
+  static const int maxQueuedMessages = 50;
+  static const int maxVoiceRejoinAttempts = 5;
+  static const Duration voiceRejoinDelay = Duration(seconds: 1);
+
+  ChatRepositoryImpl()
+    : _channelFactory = WebSocketChannel.connect,
+      _voiceFactory = VoiceSession.connect;
+
+  /// Test seam: fake channel factory.
+  @visibleForTesting
+  ChatRepositoryImpl.forTest({
+    required WebSocketChannel Function(Uri uri) channelFactory,
+    VoiceSessionFactory? voiceFactory,
+    // ignore: prefer_initializing_formals, named for readability at call sites.
+  }) : _channelFactory = channelFactory,
+       _voiceFactory = voiceFactory ?? VoiceSession.connect;
+
+  final WebSocketChannel Function(Uri uri) _channelFactory;
+  final VoiceSessionFactory _voiceFactory;
+
   WebSocketChannel? _channel;
   final _messagesController = StreamController<Message>.broadcast();
   final _usersController = StreamController<List<BackendUserInfo>>.broadcast();
@@ -54,14 +93,19 @@ class ChatRepositoryImpl implements ChatRepository {
 
   VoiceSession? _voice;
   StreamSubscription<VoiceSessionEvent>? _voiceEventSub;
+  Future<void>? _voiceJoinFuture;
   bool _voiceWanted = false;
   bool _voiceRejoinPending = false;
+  int _voiceRejoinAttempts = 0;
   Completer<String>? _mediaTokenCompleter;
-
   ConnectionStatus _connectionStatus = ConnectionStatus.disconnected;
   bool _isDisposed = false;
   int _reconnectAttempts = 0;
   Timer? _reconnectTimer;
+  Timer? _voiceRejoinTimer;
+  StreamSubscription<dynamic>? _channelSub;
+  final List<BackendMessage> _pendingSends = [];
+  final _random = Random();
 
   @override
   Stream<Message> get messages => _messagesController.stream;
@@ -89,6 +133,9 @@ class ChatRepositoryImpl implements ChatRepository {
     _nick = nick;
     _password = password;
     _reconnectAttempts = 0;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _pendingSends.clear();
     _isDisposed = false;
 
     _updateStatus(ConnectionStatus.connecting);
@@ -103,8 +150,16 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> _establishConnection() async {
     if (_isDisposed) return;
 
+    // Drop old socket so reconnects don't leak.
+    await _channelSub?.cancel();
+    _channelSub = null;
+    try {
+      await _channel?.sink.close();
+    } catch (_) {}
+    _channel = null;
+
     final uri = Uri.parse(AppConstants.wsBaseUrl);
-    _channel = WebSocketChannel.connect(uri);
+    _channel = _channelFactory(uri);
 
     final completer = Completer<void>();
 
@@ -116,34 +171,50 @@ class ChatRepositoryImpl implements ChatRepository {
     );
     _channel!.sink.add(jsonEncode(joinMsg.toJson()));
 
-    _channel!.stream.listen(
+    _channelSub = _channel!.stream.listen(
       (data) {
         if (_isDisposed) return;
-        final Map<String, dynamic> json = jsonDecode(data as String);
-        final msg = BackendMessage.fromJson(json);
+        final BackendMessage msg;
+        try {
+          if (data is! String) return;
+          final decoded = jsonDecode(data);
+          if (decoded is! Map<String, dynamic>) return;
+          msg = BackendMessage.fromJson(decoded);
+        } catch (_) {
+          return;
+        }
 
         if (msg.type == 'media_token') {
-          final completer = _mediaTokenCompleter;
+          final pending = _mediaTokenCompleter;
           _mediaTokenCompleter = null;
 
-          if (completer != null && !completer.isCompleted) {
+          if (pending != null && !pending.isCompleted) {
             if (msg.token != null && msg.token!.isNotEmpty) {
-              completer.complete(msg.token!);
+              pending.complete(msg.token!);
             } else {
-              completer.completeError(StateError('empty media token'));
+              pending.completeError(StateError('empty media token'));
             }
           }
 
           return;
         }
 
-        if (msg.type == 'error' && msg.text == 'invalid_password') {
+        if (msg.type == 'error') {
+          // Only first-frame success connects; only invalid_password tears
+          // down after the handshake.
+          final code = msg.text ?? 'server_error';
+          final failure = code == 'invalid_password'
+              ? const InvalidPasswordException()
+              : code;
           if (!completer.isCompleted) {
-            completer.completeError('invalid_password');
-          } else {
-            _messagesController.addError('invalid_password');
+            completer.completeError(failure);
+            unawaited(disconnect());
+          } else if (failure is InvalidPasswordException) {
+            if (!_messagesController.isClosed) {
+              _messagesController.addError(failure);
+            }
+            unawaited(disconnect());
           }
-          disconnect();
           return;
         }
 
@@ -151,6 +222,7 @@ class ChatRepositoryImpl implements ChatRepository {
           completer.complete();
           _updateStatus(ConnectionStatus.connected);
           _reconnectAttempts = 0;
+          _flushQueue();
         }
 
         if (msg.type == 'history') {
@@ -160,11 +232,11 @@ class ChatRepositoryImpl implements ChatRepository {
             }
           }
         } else if (msg.type == 'users_list') {
-          if (msg.users != null) {
+          if (msg.users != null && !_usersController.isClosed) {
             _usersController.add(msg.users!);
           }
         } else if (msg.type == 'reaction') {
-          if (msg.id != null) {
+          if (msg.id != null && !_reactionUpdatesController.isClosed) {
             _reactionUpdatesController.add(
               ReactionUpdate(
                 messageId: msg.id.toString(),
@@ -180,12 +252,11 @@ class ChatRepositoryImpl implements ChatRepository {
           _handleIncomingMessage(msg, _roomCode ?? '');
         }
       },
-      onError: (error) {
+      onError: (Object error) {
         if (_isDisposed) return;
         if (!completer.isCompleted) {
           completer.completeError(error);
         } else {
-          _messagesController.addError(error);
           _handleDisconnectOrError(error);
         }
       },
@@ -200,9 +271,13 @@ class ChatRepositoryImpl implements ChatRepository {
     );
 
     return completer.future.timeout(
-      const Duration(seconds: 10),
+      AppConstants.wsJoinTimeout,
       onTimeout: () {
-        _channel?.sink.close();
+        _channelSub?.cancel();
+        _channelSub = null;
+        try {
+          _channel?.sink.close();
+        } catch (_) {}
         _channel = null;
         throw TimeoutException('Connection timed out');
       },
@@ -226,32 +301,83 @@ class ChatRepositoryImpl implements ChatRepository {
     _reconnectTimer?.cancel();
     if (_isDisposed) return;
 
-    final delaySeconds = (1 << _reconnectAttempts).clamp(1, 30);
+    if (_reconnectAttempts >= maxReconnectAttempts) {
+      _pendingSends.clear();
+      _updateStatus(ConnectionStatus.disconnected);
+      if (!_messagesController.isClosed) {
+        _messagesController.addError('Could not reconnect. Please try again.');
+      }
+      return;
+    }
+
+    final backoffSeconds = (1 << _reconnectAttempts).clamp(1, 30);
+    final jitterMs = _random.nextInt(1000);
     _reconnectAttempts++;
 
-    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () async {
-      if (_isDisposed || _connectionStatus != ConnectionStatus.reconnecting) {
-        return;
-      }
+    _reconnectTimer = Timer(
+      Duration(seconds: backoffSeconds, milliseconds: jitterMs),
+      () async {
+        if (_isDisposed || _connectionStatus != ConnectionStatus.reconnecting) {
+          return;
+        }
 
+        try {
+          await _establishConnection();
+          await _maybeRejoinVoice();
+        } catch (_) {
+          _scheduleReconnect();
+        }
+      },
+    );
+  }
+
+  /// Sends when connected, else queues (typing dropped); flushes on reconnect.
+  void _sendOrQueue(BackendMessage msg, {bool dropWhenOffline = false}) {
+    if (_isDisposed) return;
+    final channel = _channel;
+    if (channel != null && _connectionStatus == ConnectionStatus.connected) {
       try {
-        await _establishConnection();
-        await _maybeRejoinVoice();
-      } catch (e) {
-        _scheduleReconnect();
+        channel.sink.add(jsonEncode(msg.toJson()));
+        return;
+      } catch (_) {
+        // Fall through to queue so the message is not silently lost.
       }
-    });
+    }
+    if (dropWhenOffline) return;
+    if (_pendingSends.length >= maxQueuedMessages) {
+      _pendingSends.removeAt(0);
+    }
+    _pendingSends.add(msg);
+  }
+
+  void _flushQueue() {
+    if (_pendingSends.isEmpty) return;
+    final pending = List<BackendMessage>.from(_pendingSends);
+    _pendingSends.clear();
+    for (var i = 0; i < pending.length; i++) {
+      try {
+        _channel?.sink.add(jsonEncode(pending[i].toJson()));
+      } catch (_) {
+        // Re-queue failed + later messages to preserve order.
+        _pendingSends.insertAll(0, pending.sublist(i));
+        break;
+      }
+    }
   }
 
   void _handleIncomingMessage(BackendMessage backendMsg, String roomCode) {
     if (backendMsg.type == 'chat' ||
         backendMsg.type == 'message' ||
         backendMsg.type == 'system') {
+      if (_messagesController.isClosed) return;
       final ts = backendMsg.timestamp;
       final timestamp = ts != null
           ? DateTime.fromMillisecondsSinceEpoch(ts)
           : DateTime.now();
-      final nick = backendMsg.nick ?? 'system';
+      final nick = _truncate(
+        backendMsg.nick ?? 'system',
+        AppConstants.maxNickLength,
+      );
       final id =
           backendMsg.id?.toString() ??
           (ts != null
@@ -263,7 +389,10 @@ class ChatRepositoryImpl implements ChatRepository {
         senderId: nick,
         senderNickname: nick,
         senderColorHex: backendMsg.color ?? '#FFFFFF',
-        content: backendMsg.text ?? '',
+        content: _truncate(
+          backendMsg.text ?? '',
+          AppConstants.maxMessageTextLength,
+        ),
         timestamp: timestamp,
         isSystemMessage: backendMsg.type == 'system',
         reactions:
@@ -273,67 +402,57 @@ class ChatRepositoryImpl implements ChatRepository {
             const [],
         replyToId: backendMsg.replyToId,
         replyToNick: backendMsg.replyToNick,
-        replyToText: backendMsg.replyToText,
+        replyToText: backendMsg.replyToText == null
+            ? null
+            : _truncate(
+                backendMsg.replyToText!,
+                AppConstants.maxMessageTextLength,
+              ),
       );
       _messagesController.add(msg);
     }
   }
 
+  static String _truncate(String value, int maxLength) =>
+      value.length <= maxLength ? value : value.substring(0, maxLength);
+
   @override
   Future<void> sendMessage(String content, {int? replyToId}) async {
-    if (_channel != null) {
-      final msg = BackendMessage(
-        type: 'message',
-        text: content,
-        replyToId: replyToId,
-      );
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(
+      BackendMessage(type: 'message', text: content, replyToId: replyToId),
+    );
   }
 
   @override
   Future<void> updateNickname(String nick) async {
-    if (_channel != null) {
-      final msg = BackendMessage(type: 'nick', newNick: nick);
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(BackendMessage(type: 'nick', newNick: nick));
   }
 
   @override
   Future<void> updateColor(String color) async {
-    if (_channel != null) {
-      final msg = BackendMessage(type: 'color', color: color);
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(BackendMessage(type: 'color', color: color));
   }
 
   @override
   Future<void> setPassword(String password) async {
-    if (_channel != null) {
-      final msg = BackendMessage(type: 'set_password', password: password);
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(BackendMessage(type: 'set_password', password: password));
   }
 
   @override
   Future<void> sendTyping() async {
-    if (_channel != null) {
-      final msg = BackendMessage(type: 'typing');
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(BackendMessage(type: 'typing'), dropWhenOffline: true);
   }
 
   @override
   Future<void> sendReaction(int messageId, String name) async {
-    if (_channel != null) {
-      final msg = BackendMessage(type: 'reaction', id: messageId, text: name);
-      _channel!.sink.add(jsonEncode(msg.toJson()));
-    }
+    _sendOrQueue(BackendMessage(type: 'reaction', id: messageId, text: name));
   }
 
   @override
   Future<void> joinVoice() async {
     if (_voice != null) return;
+    final inFlight = _voiceJoinFuture;
+    if (inFlight != null) return inFlight;
 
     if (_channel == null ||
         _connectionStatus != ConnectionStatus.connected ||
@@ -342,24 +461,20 @@ class ChatRepositoryImpl implements ChatRepository {
     }
 
     _voiceWanted = true;
+    _voiceRejoinAttempts = 0;
 
+    final future = _joinVoiceInner();
+    _voiceJoinFuture = future;
     try {
-      final token = await _requestMediaToken();
-      final session = await VoiceSession.connect(
-        mediaUrl: AppConstants.mediaWsBaseUrl,
-        room: _roomCode!,
-        token: token,
-      );
+      await future;
+    } finally {
+      if (identical(_voiceJoinFuture, future)) _voiceJoinFuture = null;
+    }
+  }
 
-      if (_isDisposed) {
-        await session.dispose();
-
-        return;
-      }
-
-      _voice = session;
-      _voiceEventSub = session.events.listen(_onVoiceEvent);
-      _emitVoiceActive(true);
+  Future<void> _joinVoiceInner() async {
+    try {
+      await _establishVoice();
     } catch (_) {
       _voiceWanted = false;
 
@@ -367,9 +482,33 @@ class ChatRepositoryImpl implements ChatRepository {
     }
   }
 
+  /// Dials media without clearing rejoin intent on transient failure.
+  Future<void> _establishVoice() async {
+    final token = await _requestMediaToken();
+    final session = await _voiceFactory(
+      mediaUrl: AppConstants.mediaWsBaseUrl,
+      room: _roomCode!,
+      token: token,
+    );
+
+    if (_isDisposed || !_voiceWanted) {
+      await session.dispose();
+
+      return;
+    }
+
+    _voice = session;
+    _voiceEventSub = session.events.listen(_onVoiceEvent);
+    _emitVoiceActive(true);
+  }
+
   @override
   Future<void> leaveVoice() async {
     _voiceWanted = false;
+    _voiceRejoinPending = false;
+    _voiceRejoinAttempts = 0;
+    _voiceRejoinTimer?.cancel();
+    _voiceRejoinTimer = null;
     await _closeVoiceSession();
   }
 
@@ -379,22 +518,50 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   Future<String> _requestMediaToken() async {
+    final channel = _channel;
+    if (channel == null || _connectionStatus != ConnectionStatus.connected) {
+      throw StateError('not connected');
+    }
+    // Fail any superseded request instead of leaving it hanging forever.
+    final stale = _mediaTokenCompleter;
+    if (stale != null && !stale.isCompleted) {
+      stale.completeError(StateError('media token request superseded'));
+    }
     final completer = Completer<String>();
     _mediaTokenCompleter = completer;
 
-    _channel!.sink.add(
-      jsonEncode(BackendMessage(type: 'media_token').toJson()),
-    );
+    try {
+      channel.sink.add(
+        jsonEncode(BackendMessage(type: 'media_token').toJson()),
+      );
+    } catch (_) {
+      if (identical(_mediaTokenCompleter, completer)) {
+        _mediaTokenCompleter = null;
+      }
+      rethrow;
+    }
 
     final token = await completer.future.timeout(
-      const Duration(seconds: 5),
+      AppConstants.mediaTokenTimeout,
       onTimeout: () {
-        _mediaTokenCompleter = null;
+        // Only clear our own completer; a newer request may own the field.
+        if (identical(_mediaTokenCompleter, completer)) {
+          _mediaTokenCompleter = null;
+        }
         throw TimeoutException('media token request timed out');
       },
     );
 
     return token;
+  }
+
+  /// Fails a pending token request instead of hanging joinVoice.
+  void _failPendingMediaToken(Object error) {
+    final pending = _mediaTokenCompleter;
+    _mediaTokenCompleter = null;
+    if (pending != null && !pending.isCompleted) {
+      pending.completeError(error);
+    }
   }
 
   Future<void> _closeVoiceSession() async {
@@ -422,26 +589,51 @@ class ChatRepositoryImpl implements ChatRepository {
       _voice = null;
       _emitVoiceActive(false);
 
-      if (wasActive &&
-          _voiceWanted &&
-          !_voiceRejoinPending &&
-          _connectionStatus == ConnectionStatus.connected) {
+      // Keep the rejoin intent even while reconnecting: _maybeRejoinVoice
+      // retries once the socket is back instead of dropping voice silently.
+      if (wasActive && _voiceWanted && !_voiceRejoinPending) {
         _voiceRejoinPending = true;
-        Timer(const Duration(seconds: 1), () {
-          _voiceRejoinPending = false;
-          _maybeRejoinVoice();
-        });
+        _scheduleVoiceRejoin();
       }
     }
+  }
+
+  void _scheduleVoiceRejoin() {
+    _voiceRejoinTimer?.cancel();
+    if (_isDisposed) return;
+    _voiceRejoinTimer = Timer(voiceRejoinDelay, () {
+      _voiceRejoinPending = false;
+      unawaited(_maybeRejoinVoice());
+    });
   }
 
   Future<void> _maybeRejoinVoice() async {
     if (_isDisposed || !_voiceWanted || _voice != null) return;
 
+    if (_connectionStatus != ConnectionStatus.connected) {
+      // Stay pending; the reconnect path retries.
+      _voiceRejoinPending = true;
+      return;
+    }
+
     try {
-      await joinVoice();
-    } catch (_) {
-      _voiceWanted = false;
+      await _establishVoice();
+      _voiceRejoinPending = false;
+      _voiceRejoinAttempts = 0;
+    } catch (e) {
+      _voiceRejoinAttempts++;
+      if (!_voiceErrorsController.isClosed) {
+        _voiceErrorsController.add(e.toString());
+      }
+      if (_voiceRejoinAttempts >= maxVoiceRejoinAttempts) {
+        // Give up on permanent failure (e.g. revoked mic).
+        _voiceWanted = false;
+        _voiceRejoinPending = false;
+        _voiceRejoinAttempts = 0;
+      } else {
+        _voiceRejoinPending = true;
+        _scheduleVoiceRejoin();
+      }
     }
   }
 
@@ -454,18 +646,36 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<void> disconnect() async {
     _voiceWanted = false;
+    _voiceRejoinTimer?.cancel();
+    _voiceRejoinTimer = null;
+    _voiceRejoinPending = false;
+    _voiceRejoinAttempts = 0;
+    _pendingSends.clear();
     await _closeVoiceSession();
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
+    _failPendingMediaToken(StateError('disconnected'));
     _updateStatus(ConnectionStatus.disconnected);
-    await _channel?.sink.close();
+    await _channelSub?.cancel();
+    _channelSub = null;
+    try {
+      await _channel?.sink.close();
+    } catch (_) {}
     _channel = null;
   }
 
   @override
   void dispose() {
     _isDisposed = true;
-    disconnect();
+    _reconnectTimer?.cancel();
+    _voiceRejoinTimer?.cancel();
+    _channelSub?.cancel();
+    _voiceEventSub?.cancel();
+    _failPendingMediaToken(StateError('disposed'));
+    try {
+      _channel?.sink.close();
+    } catch (_) {}
+    _channel = null;
     _messagesController.close();
     _usersController.close();
     _connectionStatusController.close();

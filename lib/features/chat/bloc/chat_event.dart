@@ -55,13 +55,6 @@ class UpdateColor extends ChatEvent {
   List<Object?> get props => [colorHex];
 }
 
-class SetRoomPassword extends ChatEvent {
-  final String password;
-  const SetRoomPassword(this.password);
-  @override
-  List<Object?> get props => [password];
-}
-
 class SendTyping extends ChatEvent {}
 
 class SendReaction extends ChatEvent {
@@ -101,6 +94,10 @@ class _ChatError extends ChatEvent {
 }
 
 class DisconnectChat extends ChatEvent {}
+
+class ClearChatError extends ChatEvent {}
+
+class ClearVoiceError extends ChatEvent {}
 
 class StartVoice extends ChatEvent {}
 

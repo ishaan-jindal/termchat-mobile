@@ -10,9 +10,17 @@ on:
 permissions:
   contents: read
 
+env:
+  FLUTTER_VERSION: "3.47.2"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       build: ${{ steps.filter.outputs.build }}
     steps:
@@ -29,12 +37,14 @@ jobs:
               - 'android/**'
               - 'assets/**'
               - 'test/**'
+              - '.github/**'
               - 'analysis_options.yaml'
               - 'pubspec.yaml'
               - 'pubspec.lock'
 
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
@@ -49,20 +59,28 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: "stable"
           cache: true
 
       - name: Get dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
+
+      - name: Verify code generation
+        run: dart run build_runner build --delete-conflicting-outputs && git diff --exit-code
+
+      - name: Verify formatting
+        run: dart format --set-exit-if-changed lib test
 
       - name: Analyze
-        run: flutter analyze
+        run: flutter analyze --fatal-warnings --fatal-infos
 
       - name: Test
         run: flutter test
 
   build-debug-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: [changes, verify]
     if: needs.changes.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
 
@@ -79,11 +97,12 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: "stable"
           cache: true
 
       - name: Get dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Build debug APK
         run: flutter build apk --debug
@@ -92,4 +111,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: termchat-debug-apk
+          if-no-files-found: error
+          retention-days: 7
           path: build/app/outputs/flutter-apk/app-debug.apk

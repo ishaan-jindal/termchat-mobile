@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_theme.dart';
 
 class JoinAnotherRoomForm extends StatefulWidget {
   final Future<bool> Function(String) onJoin;
@@ -49,6 +50,7 @@ class _JoinAnotherRoomFormState extends State<JoinAnotherRoomForm> {
           controller: _controller,
           decoration: InputDecoration(
             hintText: '> room code',
+            labelText: 'Room code',
             errorText: _errorText,
           ),
           style: textTheme.bodyLarge,
@@ -63,11 +65,9 @@ class _JoinAnotherRoomFormState extends State<JoinAnotherRoomForm> {
         const SizedBox(height: AppConstants.spacing16),
         FilledButton(
           onPressed: _handleJoin,
-          style: FilledButton.styleFrom(
-            backgroundColor: theme.colorScheme.onSurface,
-            foregroundColor: theme.colorScheme.surface,
-            padding: const EdgeInsets.symmetric(
-              vertical: AppConstants.spacing12,
+          style: AppTheme.inverseFilledButtonStyle(theme.colorScheme).copyWith(
+            padding: WidgetStatePropertyAll(
+              const EdgeInsets.symmetric(vertical: AppConstants.spacing12),
             ),
           ),
           child: const Text('join room'),

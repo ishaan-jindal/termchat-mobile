@@ -14,12 +14,7 @@ class SettingsSectionHeader extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppConstants.spacing12),
-      child: Text(
-        title,
-        style: textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-        ),
-      ),
+      child: Text(title, style: textTheme.labelSmall),
     );
   }
 }

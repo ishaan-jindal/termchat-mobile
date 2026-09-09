@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../repositories/chat_repository.dart';
 
 class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
   final String roomName;
   final int usersCount;
+  final ConnectionStatus connectionStatus;
   final VoidCallback onOpenDrawer;
   final bool voiceActive;
   final VoidCallback? onToggleVoice;
@@ -13,6 +15,7 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     required this.roomName,
     required this.usersCount,
+    this.connectionStatus = ConnectionStatus.connected,
     required this.onOpenDrawer,
     this.voiceActive = false,
     this.onToggleVoice,
@@ -23,70 +26,80 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        border: Border(bottom: BorderSide(color: theme.dividerColor)),
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppConstants.spacing24,
-        vertical: AppConstants.spacing16,
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(roomName, style: textTheme.headlineMedium),
-                const SizedBox(height: AppConstants.spacing4),
-                Row(
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.tertiary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: AppConstants.spacing8),
-                    Text('connected', style: textTheme.bodySmall),
-                  ],
-                ),
-              ],
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (onToggleVoice != null)
-                  IconButton(
-                    onPressed: onToggleVoice,
-                    tooltip: voiceActive ? 'Leave voice' : 'Join voice',
-                    icon: Icon(voiceActive ? Icons.mic : Icons.mic_none),
-                    color: voiceActive
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                const SizedBox(width: AppConstants.spacing8),
-                GestureDetector(
-                  onTap: onOpenDrawer,
-                  child: Text(
-                    '$usersCount users ›',
-                    style: textTheme.bodySmall,
+    final statusLabel = switch (connectionStatus) {
+      ConnectionStatus.connected => 'connected',
+      ConnectionStatus.connecting => 'connecting...',
+      ConnectionStatus.reconnecting => 'reconnecting...',
+      ConnectionStatus.disconnected => 'disconnected',
+    };
+
+    return AppBar(
+      titleSpacing: AppConstants.spacing24,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            roomName,
+            style: textTheme.headlineMedium,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: AppConstants.spacing4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ExcludeSemantics(
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.tertiary,
+                    shape: BoxShape.circle,
                   ),
                 ),
-              ],
+              ),
+              const SizedBox(width: AppConstants.spacing8),
+              Semantics(
+                liveRegion: true,
+                child: Text(statusLabel, style: textTheme.bodySmall),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        if (onToggleVoice != null)
+          Semantics(
+            selected: voiceActive,
+            child: IconButton(
+              onPressed: onToggleVoice,
+              tooltip: voiceActive ? 'Leave voice' : 'Join voice',
+              icon: Icon(voiceActive ? Icons.mic : Icons.mic_none),
+              color: voiceActive
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
             ),
-          ],
+          ),
+        TextButton(
+          onPressed: onOpenDrawer,
+          style: TextButton.styleFrom(
+            minimumSize: const Size(48, 48),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Text(
+            '$usersCount users ›',
+            semanticsLabel: '$usersCount users, open user list',
+            style: textTheme.bodySmall,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-      ),
+        const SizedBox(width: AppConstants.spacing8),
+      ],
     );
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 40);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

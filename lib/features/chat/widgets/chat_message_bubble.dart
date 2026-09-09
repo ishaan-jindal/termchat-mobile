@@ -30,15 +30,9 @@ class ChatMessageBubble extends StatelessWidget {
     final textTheme = theme.textTheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    final surfaceColor = isDark
-        ? AppColors.bgElevatedDark
-        : AppColors.bgElevatedLight;
-    final borderColor = isDark
-        ? AppColors.borderDefaultDark
-        : AppColors.borderDefaultLight;
-    final primaryTextColor = isDark
-        ? AppColors.textPrimaryDark
-        : AppColors.textPrimaryLight;
+    final surfaceColor = theme.cardColor;
+    final borderColor = theme.dividerColor;
+    final primaryTextColor = theme.colorScheme.onSurface;
     final bgColor = isMention
         ? (isDark ? AppColors.mentionBgDark : AppColors.mentionBgLight)
         : surfaceColor;
@@ -54,64 +48,74 @@ class ChatMessageBubble extends StatelessWidget {
         horizontal: AppConstants.spacing16,
         vertical: AppConstants.spacing4,
       ),
-      child: InkWell(
+      child: Semantics(
+        button: onReact != null,
         onLongPress: onReact,
-        borderRadius: BorderRadius.circular(AppConstants.radius12),
-        child: Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(AppConstants.radius12),
-                border: Border.all(color: borderColor),
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppConstants.spacing12,
-                vertical: AppConstants.spacing8,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (message.replyToId != null && message.replyToId! > 0)
-                    _buildReplyQuote(context),
-                  Text(
-                    '> ${message.senderNickname}',
-                    style: textTheme.titleMedium?.copyWith(
-                      color: usernameColor,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    message.content,
-                    style: isMention
-                        ? textTheme.bodyLarge?.copyWith(
-                            color: mentionTextColor,
-                            fontWeight: FontWeight.bold,
-                          )
-                        : textTheme.bodyLarge?.copyWith(
-                            color: primaryTextColor,
-                          ),
-                  ),
-                  if (message.reactions.isNotEmpty)
-                    _buildReactionChips(context),
-                ],
-              ),
-            ),
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(
-                width: 3,
+        label: message.isSystemMessage
+            ? message.content
+            : '${message.senderNickname}: ${message.content}',
+        child: InkWell(
+          onLongPress: onReact,
+          borderRadius: BorderRadius.circular(AppConstants.radius12),
+          child: Stack(
+            children: [
+              Container(
                 decoration: BoxDecoration(
-                  color: usernameColor,
-                  borderRadius: BorderRadius.horizontal(
-                    left: Radius.circular(AppConstants.radius12),
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(AppConstants.radius12),
+                  border: Border.all(color: borderColor),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.spacing12,
+                  vertical: AppConstants.spacing8,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (message.replyToId != null && message.replyToId! > 0)
+                      _buildReplyQuote(context),
+                    Text(
+                      '> ${message.senderNickname}',
+                      semanticsLabel: message.senderNickname,
+                      style: textTheme.titleMedium?.copyWith(
+                        color: usernameColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      message.content,
+                      style: isMention
+                          ? textTheme.bodyLarge?.copyWith(
+                              color: mentionTextColor,
+                              fontWeight: FontWeight.bold,
+                            )
+                          : textTheme.bodyLarge?.copyWith(
+                              color: primaryTextColor,
+                            ),
+                    ),
+                    if (message.reactions.isNotEmpty)
+                      _buildReactionChips(context),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 3,
+                  decoration: BoxDecoration(
+                    color: usernameColor,
+                    borderRadius: BorderRadius.horizontal(
+                      left: Radius.circular(AppConstants.radius12),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -121,36 +125,43 @@ class ChatMessageBubble extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppConstants.spacing4),
-      child: InkWell(
-        onTap: onTapQuote,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppConstants.spacing8,
-            vertical: 2,
-          ),
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(color: Theme.of(context).dividerColor, width: 3),
+      child: Semantics(
+        button: onTapQuote != null,
+        label: 'Jump to quoted message',
+        child: InkWell(
+          onTap: onTapQuote,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.spacing8,
+              vertical: 2,
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                message.replyToNick ?? '',
-                style: textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: Theme.of(context).dividerColor,
+                  width: 3,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                message.replyToText ?? '',
-                style: textTheme.labelSmall,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message.replyToNick ?? '',
+                  style: textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  message.replyToText ?? '',
+                  style: textTheme.labelSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -166,28 +177,34 @@ class ChatMessageBubble extends StatelessWidget {
         runSpacing: AppConstants.spacing4,
         children: message.reactions.map((reaction) {
           final isMine = myReactions.contains('${message.id}:${reaction.name}');
-          return InkWell(
-            onTap: onToggleReaction == null
-                ? null
-                : () => onToggleReaction!(reaction.name),
-            borderRadius: BorderRadius.circular(AppConstants.spacing14),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppConstants.spacing8,
-                vertical: 2,
-              ),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: isMine
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).dividerColor,
+          return Semantics(
+            button: onToggleReaction != null,
+            selected: isMine,
+            label:
+                '${reactionGlyph(reaction.name)} ${reaction.count}${isMine ? ', selected' : ''}',
+            child: InkWell(
+              onTap: onToggleReaction == null
+                  ? null
+                  : () => onToggleReaction!(reaction.name),
+              borderRadius: BorderRadius.circular(AppConstants.spacing14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.spacing8,
+                  vertical: AppConstants.spacing2,
                 ),
-                borderRadius: BorderRadius.circular(AppConstants.spacing14),
-              ),
-              child: Text(
-                '${reactionGlyph(reaction.name)} ${reaction.count}',
-                style: textTheme.labelSmall?.copyWith(
-                  fontWeight: isMine ? FontWeight.bold : FontWeight.normal,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: isMine
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).dividerColor,
+                  ),
+                  borderRadius: BorderRadius.circular(AppConstants.spacing14),
+                ),
+                child: Text(
+                  '${reactionGlyph(reaction.name)} ${reaction.count}',
+                  style: textTheme.labelSmall?.copyWith(
+                    fontWeight: isMine ? FontWeight.bold : FontWeight.normal,
+                  ),
                 ),
               ),
             ),

@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../../../core/constants/app_constants.dart';
 import 'audio_pipeline.dart';
 import 'media_frame.dart';
 
-/// Events surfaced from a [VoiceSession] to its owner.
 sealed class VoiceSessionEvent {}
 
 class VoiceSessionEnded extends VoiceSessionEvent {}
@@ -20,8 +20,18 @@ class VoiceSessionError extends VoiceSessionEvent {
   VoiceSessionError(this.message);
 }
 
-/// Client side of the binary /media WebSocket. Bundles the socket with the
-/// streaming recorder (transmit) and player (receive) pipelines.
+/// Inspects a decoded handshake reply. Returns null on success, otherwise
+/// the failure message. Never throws on malformed payloads (toString()
+/// coerces non-string fields instead of throwing TypeError).
+String? voiceHandshakeFailure(Map<String, dynamic> json) {
+  if (json['type'] == 'ok') return null;
+  if (json['type'] == 'error') {
+    return json['text']?.toString() ?? 'voice join rejected';
+  }
+  return 'unexpected voice reply';
+}
+
+/// Client for the binary /media WebSocket plus audio pipelines.
 class VoiceSession {
   final WebSocketChannel _channel;
   final FlutterSoundPlayer _player;
@@ -32,6 +42,7 @@ class VoiceSession {
   StreamSubscription<dynamic>? _inboundSub;
   Future<void>? _playoutFuture;
   StreamController<Uint8List>? _captureController;
+  StreamSubscription<Uint8List>? _captureSub;
   final Completer<void> _handshake = Completer<void>();
   final Uint8List _silence = Uint8List(audioChunkBytes);
 
@@ -43,8 +54,6 @@ class VoiceSession {
   bool _channelClosed = false;
   bool _captureInProgress = false;
 
-  final ValueNotifier<bool> _receiving = ValueNotifier(false);
-
   VoiceSession._(this._channel)
     : _player = FlutterSoundPlayer(),
       _recorder = FlutterSoundRecorder(),
@@ -52,23 +61,20 @@ class VoiceSession {
       _mixer = VoiceMixer(),
       _eventsController = StreamController<VoiceSessionEvent>.broadcast();
 
-  bool get transmitting => _transmitting;
-
-  /// True while an inbound chunk louder than the speech threshold arrives.
-  ValueListenable<bool> get receiving => _receiving;
-
   Stream<VoiceSessionEvent> get events => _eventsController.stream;
 
-  /// Dials the media endpoint, performs the token handshake, and starts both
-  /// pipelines. Connection failures throw before any audio object is created.
+  /// Throws before creating audio objects on connection failure.
   static Future<VoiceSession> connect({
     required String mediaUrl,
     required String room,
     required String token,
   }) async {
-    final socket = await WebSocket.connect(
-      mediaEndpointUri(mediaUrl).toString(),
-    );
+    // ignore: close_sinks, ownership transfers to VoiceSession.dispose.
+    final socket =
+        await WebSocket.connect(mediaEndpointUri(mediaUrl).toString()).timeout(
+          AppConstants.mediaConnectTimeout,
+          onTimeout: () => throw TimeoutException('media connect timed out'),
+        );
     final channel = IOWebSocketChannel(socket);
     final session = VoiceSession._(channel);
 
@@ -83,9 +89,11 @@ class VoiceSession {
         onDone: session._onSocketDone,
       );
 
-      await session._handshake.future.timeout(const Duration(seconds: 10));
-      await session._startPlayback().timeout(const Duration(seconds: 5));
-      await session._openRecorder().timeout(const Duration(seconds: 5));
+      await session._handshake.future.timeout(
+        AppConstants.voiceHandshakeTimeout,
+      );
+      await session._startPlayback().timeout(AppConstants.voicePipelineTimeout);
+      await session._openRecorder().timeout(AppConstants.voicePipelineTimeout);
 
       session._playoutFuture = session._runPlayout();
 
@@ -108,17 +116,11 @@ class VoiceSession {
       return;
     }
 
-    final frame = parseMediaFrame(Uint8List.fromList(data));
+    final frame = parseMediaFrame(Uint8List.fromList(data as List<int>));
 
-    if (frame == null ||
-        frame.kind != mediaKindAudio ||
-        frame.codec != mediaCodecPcm16 ||
-        frame.voiceId == 0 ||
-        frame.payload.length.isOdd) {
-      return;
-    }
+    if (!isPlayableAudioFrame(frame)) return;
 
-    _mixer.push(frame.voiceId, frame.payload);
+    _mixer.push(frame!.voiceId, frame.payload);
   }
 
   void _resolveHandshake(dynamic data) {
@@ -138,12 +140,11 @@ class VoiceSession {
       return;
     }
 
-    if (json['type'] == 'error') {
-      _failHandshake(json['text'] as String? ?? 'voice join rejected');
-    } else if (json['type'] == 'ok') {
+    final failure = voiceHandshakeFailure(json);
+    if (failure == null) {
       _handshake.complete();
     } else {
-      _failHandshake('unexpected voice reply');
+      _failHandshake(failure);
     }
   }
 
@@ -171,13 +172,10 @@ class VoiceSession {
     _recorderOpened = true;
   }
 
-  /// Pull-driven playout loop: feeds one mixed chunk as soon as the player
-  /// accepts data, keeping the native buffer full and immune to timer jitter.
+  /// Pull-driven playout; keeps the player buffer full.
   Future<void> _runPlayout() async {
     while (!_disposed) {
       final mixed = _mixer.mix(DateTime.now()) ?? _silence;
-
-      _receiving.value = chunkPeak(mixed) >= voicePeakThreshold;
 
       try {
         await _player.feedUint8FromStream(mixed);
@@ -188,12 +186,11 @@ class VoiceSession {
     }
   }
 
-  /// Starts or stops microphone capture; each 40 ms chunk is framed and sent
-  /// over the socket.
   Future<void> setTransmitting(bool on) async {
     if (on == _transmitting) return;
     if (_captureInProgress) return;
 
+    final previous = _transmitting;
     _transmitting = on;
     _captureInProgress = true;
 
@@ -204,7 +201,7 @@ class VoiceSession {
         await _stopCapture();
       }
     } catch (_) {
-      _transmitting = false;
+      _transmitting = previous;
       rethrow;
     } finally {
       _captureInProgress = false;
@@ -212,15 +209,20 @@ class VoiceSession {
   }
 
   Future<void> _startCapture() async {
+    // ignore: close_sinks, closed in _stopCapture/dispose.
     final controller = StreamController<Uint8List>();
     _captureController = controller;
 
-    controller.stream.listen((chunk) {
+    _captureSub = controller.stream.listen((chunk) {
       for (final frame in _assembler.add(chunk)) {
         if (_disposed || _channelClosed) return;
-        _channel.sink.add(encodeAudioFrame(frame));
+        try {
+          _channel.sink.add(encodeAudioFrame(frame));
+        } catch (_) {
+          return;
+        }
       }
-    });
+    }, onError: (_) {});
 
     await _recorder.startRecorder(
       toStream: controller.sink,
@@ -235,6 +237,13 @@ class VoiceSession {
   Future<void> _stopCapture() async {
     final controller = _captureController;
     _captureController = null;
+    final sub = _captureSub;
+    _captureSub = null;
+    if (sub != null) {
+      try {
+        await sub.cancel();
+      } catch (_) {}
+    }
 
     if (_recorder.isRecording) {
       try {
@@ -264,7 +273,11 @@ class VoiceSession {
       _failHandshake(error.toString());
     }
 
-    _eventsController.add(VoiceSessionError(error.toString()));
+    if (!_eventsController.isClosed) {
+      try {
+        _eventsController.add(VoiceSessionError(error.toString()));
+      } catch (_) {}
+    }
     _emitEnded();
   }
 
@@ -278,6 +291,9 @@ class VoiceSession {
     if (_disposed) return;
 
     _disposed = true;
+
+    await _captureSub?.cancel().catchError((_) {});
+    _captureSub = null;
 
     if (_transmitting) {
       await _stopCapture();
@@ -321,8 +337,6 @@ class VoiceSession {
     try {
       await _channel.sink.close();
     } catch (_) {}
-
-    _receiving.dispose();
 
     if (!_eventsController.isClosed) {
       await _eventsController.close();

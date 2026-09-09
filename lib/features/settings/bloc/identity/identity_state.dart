@@ -22,9 +22,10 @@ class IdentityLoaded extends IdentityState {
 
 class IdentityError extends IdentityState {
   final String message;
+  final User? lastUser;
 
-  const IdentityError(this.message);
+  const IdentityError(this.message, [this.lastUser]);
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, lastUser];
 }

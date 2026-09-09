@@ -6,6 +6,14 @@ import 'package:termchat_app/core/theme/app_text_styles.dart';
 class AppTheme {
   AppTheme._();
 
+  /// Inverse filled button: onSurface bg, surface fg.
+  static ButtonStyle inverseFilledButtonStyle(ColorScheme colorScheme) {
+    return FilledButton.styleFrom(
+      backgroundColor: colorScheme.onSurface,
+      foregroundColor: colorScheme.surface,
+    );
+  }
+
   static ThemeData light({String fontSize = 'sm'}) =>
       _buildTheme(false, fontSize);
 
@@ -51,19 +59,24 @@ class AppTheme {
       brightness: isDark ? Brightness.dark : Brightness.light,
 
       primary: isDark ? AppColors.primaryDark : AppColors.primaryLight,
-      onPrimary: Colors.white,
+      onPrimary: isDark ? Colors.black : Colors.white,
 
       secondary: isDark ? AppColors.secondaryDark : AppColors.secondaryLight,
       onSecondary: Colors.black,
 
       tertiary: isDark ? AppColors.successDark : AppColors.successLight,
-      onTertiary: Colors.white,
+      onTertiary: Colors.black,
 
       error: isDark ? AppColors.errorDark : AppColors.errorLight,
-      onError: Colors.white,
+      onError: isDark ? Colors.black : Colors.white,
 
       surface: surface,
       onSurface: primaryText,
+      onSurfaceVariant: secondaryText,
+      surfaceContainerHighest: elevated,
+      surfaceContainer: surface,
+      outline: border,
+      outlineVariant: strongBorder,
     );
 
     return ThemeData(
@@ -106,6 +119,14 @@ class AppTheme {
         foregroundColor: primaryText,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: AppTextStyles.roomCode.copyWith(color: primaryText),
+      ),
+
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+        ),
       ),
 
       cardTheme: CardThemeData(

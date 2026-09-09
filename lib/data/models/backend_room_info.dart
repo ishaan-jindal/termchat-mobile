@@ -1,3 +1,5 @@
+import '../json_coerce.dart';
+
 class BackendRoomInfo {
   final String id;
   final int userCount;
@@ -12,11 +14,15 @@ class BackendRoomInfo {
   });
 
   factory BackendRoomInfo.fromJson(Map<String, dynamic> json) {
+    final id = asString(json['id']);
+    if (id == null || id.isEmpty) {
+      throw const FormatException('missing room id');
+    }
     return BackendRoomInfo(
-      id: json['id'] as String,
-      userCount: json['user_count'] as int? ?? 0,
-      hasPassword: json['has_password'] as bool? ?? false,
-      hostNick: json['host_nick'] as String? ?? '',
+      id: id,
+      userCount: asInt(json['user_count']) ?? 0,
+      hasPassword: asBool(json['has_password']) ?? false,
+      hostNick: asString(json['host_nick']) ?? '',
     );
   }
 

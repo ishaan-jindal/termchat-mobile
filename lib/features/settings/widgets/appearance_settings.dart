@@ -117,20 +117,30 @@ class AppearanceSettings extends StatelessWidget {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
-    return InkWell(
-      onTap: () => context.read<SettingsBloc>().add(UpdateFontSize(size)),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? theme.dividerColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          size,
-          style: textTheme.labelSmall?.copyWith(
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: 'Font size $size',
+      child: InkWell(
+        onTap: () => context.read<SettingsBloc>().add(UpdateFontSize(size)),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
             color: isSelected
-                ? theme.colorScheme.onSurface
-                : textTheme.labelSmall?.color,
+                ? theme.colorScheme.surfaceContainerHighest
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Center(
+            child: Text(
+              size,
+              style: textTheme.labelSmall?.copyWith(
+                color: isSelected
+                    ? theme.colorScheme.onSurface
+                    : textTheme.labelSmall?.color,
+              ),
+            ),
           ),
         ),
       ),
@@ -150,41 +160,51 @@ class AppearanceSettings extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.horizontal(
-          left: isFirst
-              ? const Radius.circular(AppConstants.radius8)
-              : Radius.zero,
-          right: isLast
-              ? const Radius.circular(AppConstants.radius8)
-              : Radius.zero,
-        ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: AppConstants.spacing12),
-          decoration: BoxDecoration(
-            color: isSelected ? theme.dividerColor : Colors.transparent,
-            border: Border(
-              right: isLast
-                  ? BorderSide.none
-                  : BorderSide(color: theme.dividerColor),
-            ),
-            borderRadius: BorderRadius.horizontal(
-              left: isFirst
-                  ? const Radius.circular(AppConstants.radius8)
-                  : Radius.zero,
-              right: isLast
-                  ? const Radius.circular(AppConstants.radius8)
-                  : Radius.zero,
-            ),
+      child: Semantics(
+        button: true,
+        selected: isSelected,
+        label: label,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.horizontal(
+            left: isFirst
+                ? const Radius.circular(AppConstants.radius8)
+                : Radius.zero,
+            right: isLast
+                ? const Radius.circular(AppConstants.radius8)
+                : Radius.zero,
           ),
-          child: Center(
-            child: Text(
-              label,
-              style: textTheme.bodySmall?.copyWith(
-                color: isSelected
-                    ? theme.colorScheme.onSurface
-                    : textTheme.bodySmall?.color,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(
+              vertical: AppConstants.spacing12,
+            ),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? theme.colorScheme.surfaceContainerHighest
+                  : Colors.transparent,
+              border: Border(
+                right: isLast
+                    ? BorderSide.none
+                    : BorderSide(color: theme.dividerColor),
+              ),
+              borderRadius: BorderRadius.horizontal(
+                left: isFirst
+                    ? const Radius.circular(AppConstants.radius8)
+                    : Radius.zero,
+                right: isLast
+                    ? const Radius.circular(AppConstants.radius8)
+                    : Radius.zero,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: textTheme.bodySmall?.copyWith(
+                  color: isSelected
+                      ? theme.colorScheme.onSurface
+                      : textTheme.bodySmall?.color,
+                ),
               ),
             ),
           ),

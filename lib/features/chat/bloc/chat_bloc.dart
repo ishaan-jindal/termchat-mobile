@@ -1,24 +1,28 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../../core/models/message.dart';
-import '../../../data/models/backend_user_info.dart';
-import '../models/reaction_update.dart';
 import '../../../core/utils/app_lifecycle_tracker.dart';
-import '../../../core/utils/notification_helper.dart';
 import '../../../core/utils/audio_helper.dart';
+import '../../../core/utils/color_utils.dart';
+import '../../../core/utils/notification_helper.dart';
+import '../../../data/models/backend_user_info.dart';
 import '../../settings/bloc/identity/identity_bloc.dart' as identity;
 import '../../settings/bloc/settings/settings_bloc.dart';
+import '../models/reaction_update.dart';
 import '../repositories/chat_repository.dart';
 
-part 'chat_state.dart';
 part 'chat_event.dart';
+part 'chat_state.dart';
 
 @injectable
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
+  static const int maxMessages = 500;
+
   final ChatRepository _repository;
   final identity.IdentityBloc _identityBloc;
   final SettingsBloc _settingsBloc;
@@ -37,7 +41,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<ClearReplyTarget>(_onClearReplyTarget);
     on<UpdateNickname>(_onUpdateNickname);
     on<UpdateColor>(_onUpdateColor);
-    on<SetRoomPassword>(_onSetRoomPassword);
     on<SendTyping>(_onSendTyping);
     on<SendReaction>(_onSendReaction);
     on<StartVoice>(_onStartVoice);
@@ -51,6 +54,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<_VoiceError>(_onVoiceError);
     on<DisconnectChat>(_onDisconnectChat);
     on<_ConnectionStatusChanged>(_onConnectionStatusChanged);
+    on<ClearChatError>(_onClearChatError);
+    on<ClearVoiceError>(_onClearVoiceError);
   }
 
   Future<void> _onConnectChat(
@@ -66,6 +71,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
       await _messageSubscription?.cancel();
       await _usersSubscription?.cancel();
+      await _reactionSubscription?.cancel();
 
       _messageSubscription = _repository.messages.listen(
         (message) => add(_MessageReceived(message)),
@@ -74,12 +80,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
       _usersSubscription = _repository.users.listen(
         (users) => add(_UsersUpdated(users)),
-        onError: (error) {},
+        onError: (Object error) => debugPrint('chat users stream: $error'),
       );
 
       _reactionSubscription = _repository.reactionUpdates.listen(
         (update) => add(_ReactionUpdated(update)),
-        onError: (_) {},
+        onError: (Object error) => debugPrint('chat reactions: $error'),
       );
 
       await _voiceActiveSubscription?.cancel();
@@ -87,12 +93,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
       _voiceActiveSubscription = _repository.voiceActive.listen(
         (active) => add(_VoiceActiveChanged(active)),
-        onError: (_) {},
+        onError: (Object error) => debugPrint('chat voiceActive: $error'),
       );
 
       _voiceErrorSubscription = _repository.voiceErrors.listen(
         (error) => add(_VoiceError(error)),
-        onError: (_) {},
+        onError: (Object error) => debugPrint('chat voiceErrors: $error'),
       );
 
       await _repository.connect(
@@ -110,7 +116,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       );
 
       if (event.colorHex.isNotEmpty) {
-        add(SendMessage('/color ${event.colorHex}'));
+        await _applyColor(event.colorHex, emit);
       }
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
@@ -128,15 +134,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         final cmd = parts[0].toLowerCase();
 
         if (cmd == '/nick' && parts.length > 1) {
-          final newNick = parts.sublist(1).join(' ');
-          add(UpdateNickname(newNick));
+          await _applyNickname(parts.sublist(1).join(' '), emit);
           return;
         } else if (cmd == '/color' && parts.length > 1) {
-          add(UpdateColor(parts[1]));
+          await _applyColor(parts[1], emit);
           return;
         } else if (cmd == '/password') {
           final newPass = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-          add(SetRoomPassword(newPass));
+          await _applyPassword(newPass, emit);
           return;
         } else if (cmd == '/help') {
           final helpMsg = Message(
@@ -150,7 +155,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
             isSystemMessage: true,
           );
           emit(
-            state.copyWith(messages: List.from(state.messages)..add(helpMsg)),
+            state.copyWith(messages: _appendCapped(state.messages, helpMsg)),
           );
           return;
         } else if (cmd == '/clear') {
@@ -186,9 +191,13 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     UpdateNickname event,
     Emitter<ChatState> emit,
   ) async {
+    await _applyNickname(event.nickname, emit);
+  }
+
+  Future<void> _applyNickname(String nickname, Emitter<ChatState> emit) async {
     try {
-      await _repository.updateNickname(event.nickname);
-      _identityBloc.add(identity.UpdateNickname(event.nickname));
+      await _repository.updateNickname(nickname);
+      _identityBloc.add(identity.UpdateNickname(nickname));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }
@@ -198,20 +207,25 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     UpdateColor event,
     Emitter<ChatState> emit,
   ) async {
+    await _applyColor(event.colorHex, emit);
+  }
+
+  Future<void> _applyColor(String colorHex, Emitter<ChatState> emit) async {
+    if (ColorUtils.tryParseHexColor(colorHex) == null) {
+      emit(state.copyWith(error: 'Invalid color. Use #RGB or #RRGGBB.'));
+      return;
+    }
     try {
-      await _repository.updateColor(event.colorHex);
-      _identityBloc.add(identity.UpdateColor(event.colorHex));
+      await _repository.updateColor(colorHex);
+      _identityBloc.add(identity.UpdateColor(colorHex));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }
   }
 
-  Future<void> _onSetRoomPassword(
-    SetRoomPassword event,
-    Emitter<ChatState> emit,
-  ) async {
+  Future<void> _applyPassword(String password, Emitter<ChatState> emit) async {
     try {
-      await _repository.setPassword(event.password);
+      await _repository.setPassword(password);
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }
@@ -229,9 +243,10 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     SendReaction event,
     Emitter<ChatState> emit,
   ) async {
+    final previousReactions = state.myReactions;
     try {
       final key = '${event.messageId}:${event.name}';
-      final myReactions = Set<String>.from(state.myReactions);
+      final myReactions = Set<String>.from(previousReactions);
       if (myReactions.contains(key)) {
         myReactions.remove(key);
       } else {
@@ -240,7 +255,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       emit(state.copyWith(myReactions: myReactions));
       await _repository.sendReaction(event.messageId, event.name);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      // Revert the optimistic toggle so the UI matches the server.
+      emit(state.copyWith(myReactions: previousReactions, error: e.toString()));
     }
   }
 
@@ -264,11 +280,15 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     SetVoiceTransmit event,
     Emitter<ChatState> emit,
   ) async {
+    final previous = state.isVoiceTransmitting;
     try {
       await _repository.setVoiceTransmit(event.on);
       emit(state.copyWith(isVoiceTransmitting: event.on));
     } catch (e) {
-      emit(state.copyWith(voiceError: e.toString()));
+      // Revert the optimistic flag so the mic UI reflects reality.
+      emit(
+        state.copyWith(isVoiceTransmitting: previous, voiceError: e.toString()),
+      );
     }
   }
 
@@ -289,11 +309,10 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   void _onMessageReceived(_MessageReceived event, Emitter<ChatState> emit) {
-    final updatedMessages = List<Message>.from(state.messages)
-      ..add(event.message);
-    emit(state.copyWith(messages: updatedMessages));
+    emit(
+      state.copyWith(messages: _appendCapped(state.messages, event.message)),
+    );
 
-    // Check for user mention
     final identityState = _identityBloc.state;
     final myNick = identityState is identity.IdentityLoaded
         ? identityState.user.nickname
@@ -338,7 +357,31 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   void _onChatError(_ChatError event, Emitter<ChatState> emit) {
-    emit(state.copyWith(error: event.error, isConnected: false));
+    emit(
+      state.copyWith(
+        error: event.error,
+        isConnected: false,
+        connectionStatus: ConnectionStatus.disconnected,
+      ),
+    );
+  }
+
+  void _onClearChatError(ClearChatError event, Emitter<ChatState> emit) {
+    emit(state.copyWith(clearError: true));
+  }
+
+  void _onClearVoiceError(ClearVoiceError event, Emitter<ChatState> emit) {
+    emit(state.copyWith(clearVoiceError: true));
+  }
+
+  /// Appends a message, capping history at maxMessages.
+  List<Message> _appendCapped(List<Message> current, Message next) {
+    if (current.length >= maxMessages) {
+      return List<Message>.from(
+        current.sublist(current.length - maxMessages + 1),
+      )..add(next);
+    }
+    return List<Message>.from(current)..add(next);
   }
 
   Future<void> _onDisconnectChat(
@@ -401,14 +444,17 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   @override
-  Future<void> close() {
-    _messageSubscription?.cancel();
-    _usersSubscription?.cancel();
-    _reactionSubscription?.cancel();
-    _connectionStatusSubscription?.cancel();
-    _voiceActiveSubscription?.cancel();
-    _voiceErrorSubscription?.cancel();
+  Future<void> close() async {
+    await Future.wait([
+      if (_messageSubscription != null) _messageSubscription!.cancel(),
+      if (_usersSubscription != null) _usersSubscription!.cancel(),
+      if (_reactionSubscription != null) _reactionSubscription!.cancel(),
+      if (_connectionStatusSubscription != null)
+        _connectionStatusSubscription!.cancel(),
+      if (_voiceActiveSubscription != null) _voiceActiveSubscription!.cancel(),
+      if (_voiceErrorSubscription != null) _voiceErrorSubscription!.cancel(),
+    ]);
     _repository.dispose();
-    return super.close();
+    await super.close();
   }
 }

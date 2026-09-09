@@ -8,3 +8,8 @@ abstract class RoomsEvent extends Equatable {
 }
 
 class LoadActiveSessions extends RoomsEvent {}
+
+/// Starts background refresh (driven by RoomsPage lifecycle).
+class StartPolling extends RoomsEvent {}
+
+class StopPolling extends RoomsEvent {}

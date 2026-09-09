@@ -1,7 +1,9 @@
+import '../json_coerce.dart';
 import 'backend_reaction.dart';
 import 'backend_user_info.dart';
 
 class BackendMessage {
+  static const int maxBatchItems = 1000;
   final String type;
   final int? id;
   final String? nick;
@@ -42,30 +44,44 @@ class BackendMessage {
 
   factory BackendMessage.fromJson(Map<String, dynamic> json) {
     return BackendMessage(
-      type: json['type'] as String,
-      id: json['id'] as int?,
-      nick: json['nick'] as String?,
-      room: json['room'] as String?,
-      text: json['text'] as String?,
-      newNick: json['new_nick'] as String?,
-      color: json['color'] as String?,
-      password: json['password'] as String?,
-      token: json['token'] as String?,
-      timestamp: json['timestamp'] as int?,
-      serverTime: json['server_time'] as int?,
-      replyToId: json['reply_to_id'] as int?,
-      replyToNick: json['reply_to_nick'] as String?,
-      replyToText: json['reply_to_text'] as String?,
-      reactions: (json['reactions'] as List<dynamic>?)
-          ?.map((e) => BackendReaction.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      messages: (json['messages'] as List<dynamic>?)
-          ?.map((e) => BackendMessage.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      users: (json['users'] as List<dynamic>?)
-          ?.map((e) => BackendUserInfo.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      type: json['type'] as String? ?? 'unknown',
+      id: asInt(json['id']),
+      nick: asString(json['nick']),
+      room: asString(json['room']),
+      text: asString(json['text']),
+      newNick: asString(json['new_nick']),
+      color: asString(json['color']),
+      password: asString(json['password']),
+      token: asString(json['token']),
+      timestamp: asInt(json['timestamp']),
+      serverTime: asInt(json['server_time']),
+      replyToId: asInt(json['reply_to_id']),
+      replyToNick: asString(json['reply_to_nick']),
+      replyToText: asString(json['reply_to_text']),
+      reactions: _parseList(json['reactions'], BackendReaction.fromJson),
+      messages: _parseList(json['messages'], BackendMessage.fromJson),
+      users: _parseList(json['users'], BackendUserInfo.fromJson),
     );
+  }
+
+  /// Skips bad entries (capped) so one payload can't OOM.
+  static List<T>? _parseList<T>(
+    Object? raw,
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
+    if (raw == null) return null;
+    if (raw is! List) return null;
+    final out = <T>[];
+    for (final e in raw) {
+      if (out.length >= maxBatchItems) break;
+      if (e is! Map<String, dynamic>) continue;
+      try {
+        out.add(fromJson(e));
+      } catch (_) {
+        continue;
+      }
+    }
+    return out;
   }
 
   Map<String, dynamic> toJson() {

@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 
-/// Push-to-talk control shown while a voice session is joined. Holding the
-/// mic button transmits; the lock keeps transmit on hands-free.
+/// Push-to-talk bar; hold transmits, lock keeps on.
 class VoiceControlBar extends StatefulWidget {
   final bool isTransmitting;
   final int speakersCount;
@@ -87,44 +86,61 @@ class _VoiceControlBarState extends State<VoiceControlBar> {
                         ? 'voice locked on - tap mic to stop'
                         : 'hold the mic to talk',
                     style: textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: AppConstants.spacing4),
                   Text(
                     '${widget.speakersCount} in voice',
                     style: textTheme.labelSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            IconButton(
-              onPressed: _toggleLock,
-              tooltip: _locked ? 'Unlock transmit' : 'Lock transmit on',
-              icon: Icon(_locked ? Icons.lock : Icons.lock_open),
-              color: _locked
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
+            Semantics(
+              button: true,
+              selected: _locked,
+              label: _locked ? 'Unlock transmit' : 'Lock transmit on',
+              child: IconButton(
+                onPressed: _toggleLock,
+                tooltip: _locked ? 'Unlock transmit' : 'Lock transmit on',
+                icon: Icon(_locked ? Icons.lock : Icons.lock_open),
+                color: _locked
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(width: AppConstants.spacing8),
-            Listener(
-              key: const Key('voice_ptt_button'),
-              onPointerDown: _handlePointerDown,
-              onPointerUp: (_) => _handlePointerUpOrCancel(),
-              onPointerCancel: (_) => _handlePointerUpOrCancel(),
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: transmitting
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.surfaceContainerHighest,
-                ),
-                child: Icon(
-                  transmitting ? Icons.mic : Icons.mic_none,
-                  size: 32,
-                  color: transmitting
-                      ? theme.colorScheme.onError
-                      : theme.colorScheme.onSurfaceVariant,
+            Semantics(
+              button: true,
+              enabled: true,
+              label: transmitting
+                  ? 'Stop transmitting voice'
+                  : 'Hold to talk in voice',
+              hint: 'Press and hold to transmit',
+              child: Listener(
+                key: const Key('voice_ptt_button'),
+                onPointerDown: _handlePointerDown,
+                onPointerUp: (_) => _handlePointerUpOrCancel(),
+                onPointerCancel: (_) => _handlePointerUpOrCancel(),
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: transmitting
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.surfaceContainerHighest,
+                  ),
+                  child: Icon(
+                    transmitting ? Icons.mic : Icons.mic_none,
+                    size: 32,
+                    color: transmitting
+                        ? theme.colorScheme.onError
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 
 class RoomCard extends StatelessWidget {
@@ -32,30 +31,44 @@ class RoomCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(name, style: textTheme.titleMedium),
-              const SizedBox(height: AppConstants.spacing4),
-              Row(
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppColors.successDark,
-                      shape: BoxShape.circle,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: textTheme.titleMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppConstants.spacing4),
+                Row(
+                  children: [
+                    ExcludeSemantics(
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.tertiary,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: AppConstants.spacing8),
-                  Text(
-                    '$users user${users != 1 ? 's' : ''}${isLocked ? ' · locked' : ''}',
-                    style: textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: AppConstants.spacing8),
+                    Flexible(
+                      child: Text(
+                        '$users user${users != 1 ? 's' : ''}${isLocked ? ' · locked' : ''}',
+                        style: textTheme.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: AppConstants.spacing16),
           OutlinedButton(
             onPressed: onJoin ?? () {},
             style: OutlinedButton.styleFrom(
@@ -63,9 +76,9 @@ class RoomCard extends StatelessWidget {
                 horizontal: AppConstants.spacing16,
                 vertical: AppConstants.spacing12,
               ),
-              minimumSize: Size.zero,
+              minimumSize: const Size(48, 48),
             ),
-            child: const Text('join →'),
+            child: const Text('join →', semanticsLabel: 'join'),
           ),
         ],
       ),

@@ -1,4 +1,6 @@
-class Reaction {
+import 'package:equatable/equatable.dart';
+
+class Reaction extends Equatable {
   final String name;
   final int count;
 
@@ -7,6 +9,9 @@ class Reaction {
   Reaction copyWith({String? name, int? count}) {
     return Reaction(name: name ?? this.name, count: count ?? this.count);
   }
+
+  @override
+  List<Object?> get props => [name, count];
 }
 
 const List<String> reactionNames = <String>[

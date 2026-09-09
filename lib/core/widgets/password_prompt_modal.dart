@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../features/settings/bloc/identity/identity_bloc.dart';
 import '../constants/app_constants.dart';
+import '../theme/app_theme.dart';
 
 class PasswordPromptModal extends StatefulWidget {
   final String roomCode;
@@ -76,6 +77,8 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
             Text(
               '${widget.roomCode} requires a password',
               style: textTheme.bodySmall,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: AppConstants.spacing16),
             BlocBuilder<IdentityBloc, IdentityState>(
@@ -111,6 +114,8 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
                           color: color,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -123,19 +128,29 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
             TextField(
               controller: _passwordController,
               obscureText: _obscureText,
-              decoration: const InputDecoration(hintText: '> ********'),
+              decoration: const InputDecoration(
+                hintText: '> ********',
+                labelText: 'Password',
+              ),
               style: textTheme.bodyLarge,
               onSubmitted: (_) => _handleJoin(),
             ),
             const SizedBox(height: AppConstants.spacing8),
             Align(
               alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () {
+              child: TextButton(
+                onPressed: () {
                   setState(() {
                     _obscureText = !_obscureText;
                   });
                 },
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.spacing12,
+                  ),
+                ),
                 child: Text(
                   _obscureText ? 'show password' : 'hide password',
                   style: textTheme.labelSmall,
@@ -155,10 +170,7 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
                 Expanded(
                   child: FilledButton(
                     onPressed: _handleJoin,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: theme.colorScheme.onSurface,
-                      foregroundColor: theme.colorScheme.surface,
-                    ),
+                    style: AppTheme.inverseFilledButtonStyle(theme.colorScheme),
                     child: const Text('join room'),
                   ),
                 ),

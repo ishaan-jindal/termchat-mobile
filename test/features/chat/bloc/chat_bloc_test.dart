@@ -193,6 +193,15 @@ void main() {
         verify(() => mockRepo.updateColor('#FF0000')).called(1);
       });
 
+      test('rejects invalid /color without calling the repo', () async {
+        chatBloc.add(const SendMessage('/color notacolor'));
+
+        await waitForState(chatBloc, (s) => s.error != null);
+
+        verifyNever(() => mockRepo.updateColor(any()));
+        expect(chatBloc.state.error, contains('Invalid color'));
+      });
+
       test('handles /password command', () async {
         when(() => mockRepo.setPassword('secret')).thenAnswer((_) async {});
 
@@ -427,6 +436,16 @@ void main() {
 
         expect(chatBloc.state.messages.first.reactions, isEmpty);
       });
+
+      test('reverts optimistic toggle when send fails', () async {
+        when(() => mockRepo.sendReaction(any(), any()))
+            .thenThrow(Exception('nope'));
+
+        chatBloc.add(SendReaction(123, '+1'));
+        await waitForState(chatBloc, (s) => s.error != null);
+
+        expect(chatBloc.state.myReactions, isEmpty);
+      });
     });
 
     group('Voice', () {
@@ -470,6 +489,17 @@ void main() {
         verify(() => mockRepo.setVoiceTransmit(true)).called(1);
       });
 
+      test('SetVoiceTransmit reverts flag when set fails', () async {
+        when(() => mockRepo.setVoiceTransmit(true))
+            .thenThrow(Exception('nope'));
+
+        chatBloc.add(const SetVoiceTransmit(true));
+        await waitForState(chatBloc, (s) => s.voiceError != null);
+
+        expect(chatBloc.state.isVoiceTransmitting, isFalse);
+        expect(chatBloc.state.voiceError, isNotNull);
+      });
+
       test('voiceActive stream mirrors into state', () async {
         voiceActiveController.add(true);
         await waitForState(chatBloc, (s) => s.isVoiceActive);
@@ -483,6 +513,40 @@ void main() {
       test('voiceErrors stream surfaces as voiceError', () async {
         voiceErrorsController.add('voice dropped');
         await waitForState(chatBloc, (s) => s.voiceError == 'voice dropped');
+      });
+
+      test('ClearVoiceError clears sticky voiceError', () async {
+        voiceErrorsController.add('voice dropped');
+        await waitForState(chatBloc, (s) => s.voiceError == 'voice dropped');
+
+        chatBloc.add(ClearVoiceError());
+        await waitForState(chatBloc, (s) => s.voiceError == null);
+
+        expect(chatBloc.state.voiceError, isNull);
+      });
+    });
+
+    group('Errors', () {
+      test('stream error sets error and disconnected status', () async {
+        await connectToRoom();
+
+        messagesController.addError(Exception('boom'));
+        await waitForState(chatBloc, (s) => s.error != null);
+
+        expect(chatBloc.state.isConnected, isFalse);
+        expect(chatBloc.state.connectionStatus, ConnectionStatus.disconnected);
+      });
+
+      test('ClearChatError clears sticky error', () async {
+        await connectToRoom();
+
+        messagesController.addError(Exception('boom'));
+        await waitForState(chatBloc, (s) => s.error != null);
+
+        chatBloc.add(ClearChatError());
+        await waitForState(chatBloc, (s) => s.error == null);
+
+        expect(chatBloc.state.error, isNull);
       });
     });
   });

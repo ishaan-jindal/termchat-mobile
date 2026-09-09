@@ -1,4 +1,8 @@
-class BackendUserInfo {
+import 'package:equatable/equatable.dart';
+
+import '../json_coerce.dart';
+
+class BackendUserInfo extends Equatable {
   final String nick;
   final String color;
   final int joinedAt;
@@ -6,7 +10,7 @@ class BackendUserInfo {
   final bool isHost;
   final int voiceId;
 
-  BackendUserInfo({
+  const BackendUserInfo({
     required this.nick,
     required this.color,
     required this.joinedAt,
@@ -16,13 +20,18 @@ class BackendUserInfo {
   });
 
   factory BackendUserInfo.fromJson(Map<String, dynamic> json) {
+    final nick = asString(json['nick']);
+    final color = asString(json['color']);
+    if (nick == null || nick.isEmpty || color == null || color.isEmpty) {
+      throw const FormatException('missing user nick/color');
+    }
     return BackendUserInfo(
-      nick: json['nick'] as String,
-      color: json['color'] as String,
-      joinedAt: json['joined_at'] as int? ?? 0,
-      typing: json['typing'] as bool? ?? false,
-      isHost: json['is_host'] as bool? ?? false,
-      voiceId: json['voice_id'] as int? ?? 0,
+      nick: nick,
+      color: color,
+      joinedAt: asInt(json['joined_at']) ?? 0,
+      typing: asBool(json['typing']) ?? false,
+      isHost: asBool(json['is_host']) ?? false,
+      voiceId: asInt(json['voice_id']) ?? 0,
     );
   }
 
@@ -36,4 +45,7 @@ class BackendUserInfo {
       if (voiceId != 0) 'voice_id': voiceId,
     };
   }
+
+  @override
+  List<Object?> get props => [nick, color, joinedAt, typing, isHost, voiceId];
 }

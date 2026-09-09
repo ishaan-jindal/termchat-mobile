@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:termchat_app/core/theme/app_colors.dart';
 import 'package:termchat_app/features/rooms/widgets/active_session_card.dart';
 
 void main() {
@@ -15,14 +14,19 @@ void main() {
   }) {
     return MaterialApp(
       home: Scaffold(
-        body: ActiveSessionCard(
-          roomName: roomName,
-          isHost: isHost,
-          isViewing: isViewing,
-          usersCount: usersCount,
-          unreadCount: unreadCount,
-          lastMessageText: lastMessageText,
-          onTap: onTap ?? () {},
+        // Mirror production: cards live in width-bounded lists, which
+        // Flexible overflow handling requires.
+        body: SizedBox(
+          width: 400,
+          child: ActiveSessionCard(
+            roomName: roomName,
+            isHost: isHost,
+            isViewing: isViewing,
+            usersCount: usersCount,
+            unreadCount: unreadCount,
+            lastMessageText: lastMessageText,
+            onTap: onTap ?? () {},
+          ),
         ),
       ),
     );
@@ -95,7 +99,10 @@ void main() {
       final decoration =
           tester.widget<Container>(badge.first).decoration as BoxDecoration;
       expect(decoration.shape, BoxShape.circle);
-      expect(decoration.color, AppColors.errorDark);
+      expect(
+        decoration.color,
+        Theme.of(tester.element(find.text('4'))).colorScheme.error,
+      );
     });
 
     testWidgets('no unread badge when unreadCount is zero', (tester) async {

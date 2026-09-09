@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:termchat_app/features/settings/bloc/settings/settings_bloc.dart';
@@ -44,7 +46,7 @@ void main() {
           ),
         ];
 
-        expectLater(settingsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(settingsBloc.stream, emitsInOrder(expected)));
 
         settingsBloc.add(LoadSettings());
       });
@@ -60,7 +62,7 @@ void main() {
               .having((s) => s.error, 'error', 'Exception: Load failed'),
         ];
 
-        expectLater(settingsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(settingsBloc.stream, emitsInOrder(expected)));
 
         settingsBloc.add(LoadSettings());
       });
@@ -75,7 +77,7 @@ void main() {
           isA<SettingsState>().having((s) => s.themeMode, 'themeMode', 'light'),
         ];
 
-        expectLater(settingsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(settingsBloc.stream, emitsInOrder(expected)));
 
         settingsBloc.add(const UpdateThemeMode('light'));
       });
@@ -92,7 +94,7 @@ void main() {
           ),
         ];
 
-        expectLater(settingsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(settingsBloc.stream, emitsInOrder(expected)));
 
         settingsBloc.add(const UpdateThemeMode('light'));
       });
@@ -106,7 +108,7 @@ void main() {
           isA<SettingsState>().having((s) => s.fontSize, 'fontSize', 'lg'),
         ];
 
-        expectLater(settingsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(settingsBloc.stream, emitsInOrder(expected)));
 
         settingsBloc.add(const UpdateFontSize('lg'));
       });
@@ -125,7 +127,7 @@ void main() {
           ),
         ];
 
-        expectLater(settingsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(settingsBloc.stream, emitsInOrder(expected)));
 
         settingsBloc.add(const ToggleMessageNotifications(true));
       });
@@ -142,7 +144,7 @@ void main() {
           ),
         ];
 
-        expectLater(settingsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(settingsBloc.stream, emitsInOrder(expected)));
 
         settingsBloc.add(const ToggleMessageNotifications(false));
       });
@@ -159,7 +161,7 @@ void main() {
           ),
         ];
 
-        expectLater(settingsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(settingsBloc.stream, emitsInOrder(expected)));
 
         settingsBloc.add(const ToggleMessageNotifications(true));
       });
@@ -178,7 +180,7 @@ void main() {
           ),
         ];
 
-        expectLater(settingsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(settingsBloc.stream, emitsInOrder(expected)));
 
         settingsBloc.add(const ToggleMentionSound(false));
       });

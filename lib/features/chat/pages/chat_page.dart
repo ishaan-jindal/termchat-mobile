@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/widgets/password_prompt_modal.dart';
+import '../../settings/bloc/identity/identity_bloc.dart' as identity;
+import '../bloc/chat_bloc.dart';
+import '../managers/active_chats_manager.dart';
+import '../repositories/chat_repository.dart';
+import '../widgets/chat_input_area.dart';
 import '../widgets/chat_top_bar.dart';
 import '../widgets/message_list.dart';
-import '../widgets/chat_input_area.dart';
 import '../widgets/room_users_drawer.dart';
 import '../widgets/voice_control_bar.dart';
-import '../bloc/chat_bloc.dart';
-import '../repositories/chat_repository.dart';
-
-import 'package:go_router/go_router.dart';
-
-import '../managers/active_chats_manager.dart';
-import '../../settings/bloc/identity/identity_bloc.dart' as identity;
-import '../../../core/widgets/password_prompt_modal.dart';
 
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
@@ -63,6 +61,16 @@ class ChatPage extends StatelessWidget {
           (previous.error != current.error && current.error != null) ||
           (previous.voiceError != current.voiceError &&
               current.voiceError != null),
+      // MessageList subscribes itself; skip rebuild on every message.
+      buildWhen: (previous, current) =>
+          previous.roomCode != current.roomCode ||
+          previous.users != current.users ||
+          previous.isLoading != current.isLoading ||
+          previous.connectionStatus != current.connectionStatus ||
+          previous.isConnected != current.isConnected ||
+          previous.isVoiceActive != current.isVoiceActive ||
+          previous.isVoiceTransmitting != current.isVoiceTransmitting ||
+          previous.replyingTo != current.replyingTo,
       listener: (context, state) async {
         if (state.voiceError != null) {
           ScaffoldMessenger.of(
@@ -97,7 +105,9 @@ class ChatPage extends StatelessWidget {
         } else if (state.error != null) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text('Error: ${state.error}')));
-          if (!state.isConnected) {
+          // Only bounce home when the join itself failed; mid-chat send
+          // failures keep their context.
+          if (!state.isConnected && state.messages.isEmpty) {
             context.go('/');
           }
         }
@@ -105,11 +115,14 @@ class ChatPage extends StatelessWidget {
       builder: (context, state) {
         final roomName = state.roomCode ?? 'Loading...';
         final usersCount = state.users.length;
+        final colorScheme = Theme.of(context).colorScheme;
+        final textTheme = Theme.of(context).textTheme;
 
         return Scaffold(
           appBar: ChatTopBar(
             roomName: roomName,
             usersCount: usersCount,
+            connectionStatus: state.connectionStatus,
             onOpenDrawer: () => _openUsersDrawer(context, roomName),
             voiceActive: state.isVoiceActive,
             onToggleVoice: () => _toggleVoice(context, state.isVoiceActive),
@@ -119,23 +132,33 @@ class ChatPage extends StatelessWidget {
               if (state.isLoading) const LinearProgressIndicator(),
               if (state.connectionStatus == ConnectionStatus.reconnecting)
                 Container(
-                  color: Colors.orange.withValues(alpha: 0.1),
+                  color: colorScheme.tertiary.withValues(alpha: 0.12),
                   padding: const EdgeInsets.all(8.0),
-                  child: const Center(
-                    child: Text(
-                      'Reconnecting...',
-                      style: TextStyle(color: Colors.orange),
+                  child: Center(
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        'Reconnecting...',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.tertiary,
+                        ),
+                      ),
                     ),
                   ),
                 )
               else if (!state.isConnected && !state.isLoading)
                 Container(
-                  color: Colors.red.withValues(alpha: 0.1),
+                  color: colorScheme.error.withValues(alpha: 0.1),
                   padding: const EdgeInsets.all(8.0),
-                  child: const Center(
-                    child: Text(
-                      'Disconnected',
-                      style: TextStyle(color: Colors.red),
+                  child: Center(
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        'Disconnected',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.error,
+                        ),
+                      ),
                     ),
                   ),
                 ),

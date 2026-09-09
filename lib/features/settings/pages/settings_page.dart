@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../widgets/about_settings.dart';
 import '../widgets/appearance_settings.dart';
 import '../widgets/identity_settings.dart';
 import '../widgets/notification_settings.dart';
-import '../widgets/about_settings.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
