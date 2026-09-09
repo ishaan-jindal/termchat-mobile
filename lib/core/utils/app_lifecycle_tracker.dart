@@ -10,10 +10,6 @@ class AppLifecycleTracker with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
   }
 
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     this.state = state;

@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Seed
-  static const Color seedColor = Color(0xFF0E0E0E);
-
   // Backgrounds
   static const Color bgAppDark = Color(0xFF141414);
   static const Color bgAppLight = Color(0xFFF7F6F3);

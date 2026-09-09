@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -45,19 +45,12 @@ class VoiceSession {
   bool _channelClosed = false;
   bool _captureInProgress = false;
 
-  final ValueNotifier<bool> _receiving = ValueNotifier(false);
-
   VoiceSession._(this._channel)
     : _player = FlutterSoundPlayer(),
       _recorder = FlutterSoundRecorder(),
       _assembler = PcmChunkAssembler(),
       _mixer = VoiceMixer(),
       _eventsController = StreamController<VoiceSessionEvent>.broadcast();
-
-  bool get transmitting => _transmitting;
-
-  /// True while an inbound chunk louder than the speech threshold arrives.
-  ValueListenable<bool> get receiving => _receiving;
 
   Stream<VoiceSessionEvent> get events => _eventsController.stream;
 
@@ -183,8 +176,6 @@ class VoiceSession {
   Future<void> _runPlayout() async {
     while (!_disposed) {
       final mixed = _mixer.mix(DateTime.now()) ?? _silence;
-
-      _receiving.value = chunkPeak(mixed) >= voicePeakThreshold;
 
       try {
         await _player.feedUint8FromStream(mixed);
@@ -348,8 +339,6 @@ class VoiceSession {
     try {
       await _channel.sink.close();
     } catch (_) {}
-
-    _receiving.dispose();
 
     if (!_eventsController.isClosed) {
       await _eventsController.close();

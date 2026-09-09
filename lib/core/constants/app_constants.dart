@@ -36,20 +36,11 @@ class AppConstants {
   static const double spacing16 = 16;
   static const double spacing20 = 20;
   static const double spacing24 = 24;
-  static const double spacing28 = 28;
   static const double spacing32 = 32;
   static const double spacing48 = 48;
 
   // ── Border Radius ──
-  static const double radius4 = 4;
-  static const double radius6 = 6;
   static const double radius8 = 8;
-  static const double radius10 = 10;
   static const double radius12 = 12;
   static const double radius16 = 16;
-
-  // ── Breakpoints ──
-  static const double breakpointMobile = 600;
-  static const double breakpointTablet = 900;
-  static const double breakpointDesktop = 1200;
 }

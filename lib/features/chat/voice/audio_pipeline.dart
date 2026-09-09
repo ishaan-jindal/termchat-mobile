@@ -116,11 +116,6 @@ class VoiceMixer {
 
     return mix;
   }
-
-  void clear() {
-    _rings.clear();
-    _started = false;
-  }
 }
 
 /// Largest sample magnitude in a PCM chunk; used for TX/RX activity lights.

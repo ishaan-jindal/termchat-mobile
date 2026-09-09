@@ -39,7 +39,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<ClearReplyTarget>(_onClearReplyTarget);
     on<UpdateNickname>(_onUpdateNickname);
     on<UpdateColor>(_onUpdateColor);
-    on<SetRoomPassword>(_onSetRoomPassword);
     on<SendTyping>(_onSendTyping);
     on<SendReaction>(_onSendReaction);
     on<StartVoice>(_onStartVoice);
@@ -216,13 +215,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }
-  }
-
-  Future<void> _onSetRoomPassword(
-    SetRoomPassword event,
-    Emitter<ChatState> emit,
-  ) async {
-    await _applyPassword(event.password, emit);
   }
 
   Future<void> _applyPassword(String password, Emitter<ChatState> emit) async {

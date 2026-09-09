@@ -34,20 +34,8 @@ class AppTextStyles {
     height: 1.4,
   );
 
-  static final TextStyle systemMessage = GoogleFonts.jetBrainsMono(
-    fontSize: 11,
-    fontWeight: FontWeight.w400,
-    height: 1.4,
-  );
-
   static final TextStyle wordmark = GoogleFonts.jetBrainsMono(
     fontSize: 22,
-    fontWeight: FontWeight.w700,
-    height: 1.2,
-  );
-
-  static final TextStyle screenTitle = GoogleFonts.jetBrainsMono(
-    fontSize: 18,
     fontWeight: FontWeight.w700,
     height: 1.2,
   );

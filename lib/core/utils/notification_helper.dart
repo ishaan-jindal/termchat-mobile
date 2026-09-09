@@ -4,9 +4,6 @@ import 'package:permission_handler/permission_handler.dart';
 class NotificationHelper {
   NotificationHelper._();
 
-  /// Invoked when a notification is tapped, with the room code payload.
-  static void Function(String? roomCode)? onNotificationTap;
-
   static final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -26,12 +23,6 @@ class NotificationHelper {
 
     await _localNotificationsPlugin.initialize(
       settings: initializationSettings,
-      onDidReceiveNotificationResponse: (response) {
-        final roomCode = response.payload;
-        if (roomCode != null && roomCode.isNotEmpty) {
-          onNotificationTap?.call(roomCode);
-        }
-      },
     );
 
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
