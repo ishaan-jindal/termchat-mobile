@@ -31,9 +31,8 @@ class ActiveChatsManager {
   }
 
   void remove(String roomId) {
-    final bloc = _activeRooms.remove(roomId);
+    final bloc = _take(roomId);
     if (bloc != null) {
-      _updateNotifier();
       // Disconnect immediately, then close on a later turn so in-flight
       // events settle and nothing can `add()` after `close()`.
       bloc.add(DisconnectChat());
@@ -45,11 +44,18 @@ class ActiveChatsManager {
   /// the caller stays alive (e.g. before navigating away) so no orphan
   /// disconnect/close is left racing a rejoin.
   Future<void> leaveRoom(String roomId) async {
-    final bloc = _activeRooms.remove(roomId);
+    final bloc = _take(roomId);
     if (bloc == null) return;
-    _updateNotifier();
     bloc.add(DisconnectChat());
     await _closeAfterDelay(bloc);
+  }
+
+  /// Removes the bloc from tracking and notifies listeners. Returns null
+  /// when the room was already gone.
+  ChatBloc? _take(String roomId) {
+    final bloc = _activeRooms.remove(roomId);
+    if (bloc != null) _updateNotifier();
+    return bloc;
   }
 
   Future<void> _closeAfterDelay(ChatBloc bloc) async {
