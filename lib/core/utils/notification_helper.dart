@@ -40,32 +40,26 @@ class NotificationHelper {
         ?.createNotificationChannel(channel);
   }
 
-  /// Requests the OS notification permission via permission_handler and
-  /// reports whether it was granted.
   static Future<bool> requestNotificationPermission() async {
     final status = await Permission.notification.request();
 
     return status.isGranted;
   }
 
-  /// Startup prompt: requests the permission only when it has not been
-  /// granted yet. Callers should schedule this after the first frame so the
-  /// dialog never blocks the initial UI.
+  /// Only prompts if not granted; call after the first frame.
   static Future<void> requestNotificationPermissionIfNeeded() async {
     if (await hasNotificationPermission()) return;
 
     await requestNotificationPermission();
   }
 
-  /// Reads the current OS notification permission state.
   static Future<bool> hasNotificationPermission() async {
     final status = await Permission.notification.status;
 
     return status.isGranted;
   }
 
-  /// Monotonic notification id so two mentions in the same second never
-  /// overwrite each other (the old `msSinceEpoch ~/ 1000` collided).
+  /// Monotonic id so concurrent mentions don't overwrite each other.
   static int _nextNotificationId = 0;
 
   static Future<void> showMentionNotification({

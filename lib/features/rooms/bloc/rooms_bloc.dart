@@ -39,8 +39,7 @@ class RoomsBloc extends Bloc<RoomsEvent, RoomsState> {
     LoadActiveSessions event,
     Emitter<RoomsState> emit,
   ) async {
-    // Only show a full spinner on the initial load; periodic 30s refreshes
-    // update silently so the list does not flicker.
+    // Silent refresh after the initial load to avoid flicker.
     final isInitialLoad = state.activeSessions.isEmpty && state.error == null;
     if (isInitialLoad) {
       emit(state.copyWith(isLoading: true, clearError: true));

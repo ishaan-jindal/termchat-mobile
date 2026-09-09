@@ -36,8 +36,7 @@ class _MessageListState extends State<MessageList> {
     }
   }
 
-  /// Only auto-scroll when the user is already near the bottom, so loading
-  /// history or receiving messages while reading doesn't yank the list.
+  /// Only auto-scroll when already near the bottom.
   bool get _isNearBottom {
     if (!_scrollController.hasClients) return true;
     final position = _scrollController.position;
@@ -86,8 +85,7 @@ class _MessageListState extends State<MessageList> {
           );
         }
 
-        // Prune scroll keys for messages that left the capped history so the
-        // map cannot grow without bound or pin old Elements.
+        // Prune keys for evicted messages.
         final ids = messages.map((m) => m.id).toSet();
         _messageKeys.removeWhere((id, _) => !ids.contains(id));
 

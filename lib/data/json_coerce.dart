@@ -1,6 +1,4 @@
-/// Lenient JSON scalar coercion. The wire format occasionally delivers
-/// numbers as strings (or bools as 0/1); coerce instead of throwing
-/// [TypeError] so one odd field doesn't sink a whole batch.
+/// Coerces numbers/bools sent as strings instead of throwing.
 int? asInt(Object? value) {
   if (value == null) return null;
   if (value is int) return value;
@@ -10,8 +8,7 @@ int? asInt(Object? value) {
   return null;
 }
 
-/// Lenient JSON bool coercion: accepts actual bools plus 0/1 and
-/// true/false strings.
+/// Accepts bools plus 0/1 and true/false strings.
 bool? asBool(Object? value) {
   if (value == null) return null;
   if (value is bool) return value;

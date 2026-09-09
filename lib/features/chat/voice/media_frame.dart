@@ -1,13 +1,11 @@
 import 'dart:typed_data';
 
-/// Binary media frame kinds carried on the /media WebSocket.
 const int mediaKindAudio = 0x01;
 const int mediaKindVideo = 0x02;
 
-/// Media audio codecs.
 const int mediaCodecPcm16 = 0x00;
 
-/// Frame header size: kind, codec, voice ID.
+/// Header: kind, codec, voice ID.
 const int mediaHeaderLen = 6;
 
 const int audioSampleRate = 16000;
@@ -15,7 +13,6 @@ const int audioChannels = 1;
 const int audioChunkSamples = 640; // 40 ms at audioSampleRate
 const int audioChunkBytes = audioChunkSamples * 2;
 
-/// A parsed media frame.
 class MediaFrame {
   final int kind;
   final int codec;
@@ -30,8 +27,7 @@ class MediaFrame {
   });
 }
 
-/// Encodes an audio frame with a zero voice ID; the server stamps the real
-/// voice ID over the header before relaying.
+/// Server stamps the real voice ID before relaying.
 Uint8List encodeAudioFrame(Uint8List payload) {
   final frame = Uint8List(mediaHeaderLen + payload.length);
   final data = ByteData.view(frame.buffer);
@@ -42,8 +38,7 @@ Uint8List encodeAudioFrame(Uint8List payload) {
   return frame;
 }
 
-/// Parses a media endpoint URL, trimming any trailing slash so concatenation
-/// never produces a doubled path segment.
+/// Trims trailing slash so concatenation never doubles the path.
 Uri mediaEndpointUri(String mediaUrl) {
   final trimmed = mediaUrl.endsWith('/')
       ? mediaUrl.substring(0, mediaUrl.length - 1)
@@ -51,7 +46,6 @@ Uri mediaEndpointUri(String mediaUrl) {
   return Uri.parse(trimmed);
 }
 
-/// Splits a media frame, rejecting short frames and unknown kinds.
 MediaFrame? parseMediaFrame(Uint8List frame) {
   if (frame.length < mediaHeaderLen) return null;
 

@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
-/// A swipe-right gesture that reveals a [background] affordance and triggers
-/// [onReply] once the drag crosses [triggerOffset]. The item snaps back on
-/// release, so it never actually dismisses.
+/// Swipe to reveal the reply affordance; snaps back, never dismisses.
 class SwipeToReply extends StatefulWidget {
   final Widget child;
   final Widget background;
@@ -53,8 +51,7 @@ class _SwipeToReplyState extends State<SwipeToReply>
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
-    // Swipe toward the leading edge in both directions: right in LTR,
-    // left in RTL.
+    // Swipe toward the leading edge in LTR and RTL.
     final delta = _isRtl ? -details.delta.dx : details.delta.dx;
     _offset = (_offset + delta).clamp(0.0, widget.maxDrag);
     if (_offset >= widget.triggerOffset && !_triggered) {

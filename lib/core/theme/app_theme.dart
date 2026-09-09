@@ -6,8 +6,7 @@ import 'package:termchat_app/core/theme/app_text_styles.dart';
 class AppTheme {
   AppTheme._();
 
-  /// Inverse "primary action" filled button used for the send/join/save style
-  /// (onSurface background, surface foreground) across modals and the input bar.
+  /// Inverse filled button: onSurface bg, surface fg.
   static ButtonStyle inverseFilledButtonStyle(ColorScheme colorScheme) {
     return FilledButton.styleFrom(
       backgroundColor: colorScheme.onSurface,

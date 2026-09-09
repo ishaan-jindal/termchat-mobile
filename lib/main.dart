@@ -20,7 +20,6 @@ void main() async {
   final packageInfo = await PackageInfo.fromPlatform();
   AppConstants.appVersion = packageInfo.version;
 
-  // Initialize lifecycle tracker and notifications setup
   AppLifecycleTracker.instance.init();
   await NotificationHelper.initialize();
 
@@ -38,8 +37,7 @@ void main() async {
     ),
   );
 
-  // Prompt for notification permission after the first frame so the system
-  // dialog never covers a blank screen or blocks startup.
+  // Defer the permission prompt until after the first frame.
   WidgetsBinding.instance.addPostFrameCallback((_) {
     NotificationHelper.requestNotificationPermissionIfNeeded();
   });
@@ -65,8 +63,7 @@ class TermchatApp extends StatelessWidget {
       providers: [
         BlocProvider<SettingsBloc>.value(value: settingsBloc),
         BlocProvider<IdentityBloc>.value(value: identityBloc),
-        // App-scoped singleton owned by GetIt (never closed by the
-        // provider), matching Identity/Settings above.
+        // GetIt-owned; never closed by the provider.
         BlocProvider<RoomsBloc>.value(value: roomsBloc),
       ],
       child: BlocBuilder<SettingsBloc, SettingsState>(

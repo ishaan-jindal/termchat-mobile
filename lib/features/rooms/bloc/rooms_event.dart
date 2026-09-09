@@ -9,9 +9,7 @@ abstract class RoomsEvent extends Equatable {
 
 class LoadActiveSessions extends RoomsEvent {}
 
-/// Starts the periodic background refresh. Driven by [RoomsPage] lifecycle
-/// so we don't poll when the page was never opened.
+/// Starts background refresh (driven by RoomsPage lifecycle).
 class StartPolling extends RoomsEvent {}
 
-/// Stops the periodic background refresh.
 class StopPolling extends RoomsEvent {}

@@ -7,9 +7,7 @@ class ColorUtils {
   static final RegExp _hex8 = RegExp(r'^[0-9a-fA-F]{8}$');
   static final RegExp _hex3 = RegExp(r'^[0-9a-fA-F]{3}$');
 
-  /// Parses a hex color string ("#FF0000", "FF0000", "#F00", "#AAFF0000")
-  /// into a Flutter [Color]. Returns opaque white for anything else rather
-  /// than throwing, so one bad server color can't break a whole list.
+  /// Parses hex; returns white instead of throwing on bad input.
   static Color parseHexColor(String hex) {
     final cleanHex = hex.replaceAll('#', '');
     if (_hex3.hasMatch(cleanHex)) {
@@ -25,8 +23,7 @@ class ColorUtils {
     return const Color(0xFFFFFFFF);
   }
 
-  /// Strict variant for validating user input (e.g. /color): null when the
-  /// value is not a usable color.
+  /// Strict parse for user input; null when invalid.
   static Color? tryParseHexColor(String hex) {
     final cleanHex = hex.replaceAll('#', '');
     if (!_hex3.hasMatch(cleanHex) &&

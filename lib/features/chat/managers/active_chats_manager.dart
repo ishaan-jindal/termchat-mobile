@@ -4,12 +4,10 @@ import 'package:flutter/foundation.dart';
 
 import '../bloc/chat_bloc.dart';
 
-/// Factory for chat BLoCs so [ActiveChatsManager] doesn't reach into the
-/// service locator and stays mockable.
+/// ChatBloc factory (keeps the manager mockable).
 typedef ChatBlocFactory = ChatBloc Function();
 
-/// Tracks active chat BLoCs keyed by room code. Registered manually in
-/// [configureDependencies] because the injected factory is a function type.
+/// Tracks blocs by room; registered manually (function type).
 class ActiveChatsManager {
   ActiveChatsManager(this._blocFactory);
 
@@ -33,16 +31,13 @@ class ActiveChatsManager {
   void remove(String roomId) {
     final bloc = _take(roomId);
     if (bloc != null) {
-      // Disconnect immediately, then close on a later turn so in-flight
-      // events settle and nothing can `add()` after `close()`.
+      // Close on a later turn so in-flight events settle first.
       bloc.add(DisconnectChat());
       unawaited(_closeAfterDelay(bloc));
     }
   }
 
-  /// Removes the room and awaits full teardown. Prefer over [remove] when
-  /// the caller stays alive (e.g. before navigating away) so no orphan
-  /// disconnect/close is left racing a rejoin.
+  /// Awaits teardown; prefer when the caller stays alive.
   Future<void> leaveRoom(String roomId) async {
     final bloc = _take(roomId);
     if (bloc == null) return;
@@ -73,8 +68,6 @@ class ActiveChatsManager {
     return _activeRooms[roomId];
   }
 
-  /// Closes every tracked bloc (disconnecting sockets) and releases the
-  /// notifier. Only called when the manager itself is torn down.
   Future<void> dispose() async {
     final blocs = _activeRooms.values.toList();
     _activeRooms.clear();

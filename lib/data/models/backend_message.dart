@@ -64,9 +64,7 @@ class BackendMessage {
     );
   }
 
-  /// Parses a JSON list element-by-element, skipping malformed entries
-  /// instead of aborting the whole batch. Capped so a pathological
-  /// history payload can't OOM the isolate.
+  /// Skips bad entries (capped) so one payload can't OOM.
   static List<T>? _parseList<T>(
     Object? raw,
     T Function(Map<String, dynamic>) fromJson,

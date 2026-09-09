@@ -307,7 +307,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       state.copyWith(messages: _appendCapped(state.messages, event.message)),
     );
 
-    // Check for user mention
     final identityState = _identityBloc.state;
     final myNick = identityState is identity.IdentityLoaded
         ? identityState.user.nickname
@@ -369,8 +368,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(state.copyWith(clearVoiceError: true));
   }
 
-  /// Appends a message while keeping the in-memory history bounded so long
-  /// rooms cannot grow without limit.
+  /// Appends a message, capping history at maxMessages.
   List<Message> _appendCapped(List<Message> current, Message next) {
     if (current.length >= maxMessages) {
       return List<Message>.from(

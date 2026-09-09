@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 
-/// Push-to-talk control shown while a voice session is joined. Holding the
-/// mic button transmits; the lock keeps transmit on hands-free.
+/// Push-to-talk bar; hold transmits, lock keeps on.
 class VoiceControlBar extends StatefulWidget {
   final bool isTransmitting;
   final int speakersCount;

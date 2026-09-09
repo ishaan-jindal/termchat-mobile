@@ -11,7 +11,6 @@ import 'audio_pipeline.dart';
 import 'media_frame.dart';
 import '../../../core/constants/app_constants.dart';
 
-/// Events surfaced from a [VoiceSession] to its owner.
 sealed class VoiceSessionEvent {}
 
 class VoiceSessionEnded extends VoiceSessionEvent {}
@@ -21,8 +20,7 @@ class VoiceSessionError extends VoiceSessionEvent {
   VoiceSessionError(this.message);
 }
 
-/// Client side of the binary /media WebSocket. Bundles the socket with the
-/// streaming recorder (transmit) and player (receive) pipelines.
+/// Client for the binary /media WebSocket plus audio pipelines.
 class VoiceSession {
   final WebSocketChannel _channel;
   final FlutterSoundPlayer _player;
@@ -54,8 +52,7 @@ class VoiceSession {
 
   Stream<VoiceSessionEvent> get events => _eventsController.stream;
 
-  /// Dials the media endpoint, performs the token handshake, and starts both
-  /// pipelines. Connection failures throw before any audio object is created.
+  /// Throws before creating audio objects on connection failure.
   static Future<VoiceSession> connect({
     required String mediaUrl,
     required String room,
@@ -171,8 +168,7 @@ class VoiceSession {
     _recorderOpened = true;
   }
 
-  /// Pull-driven playout loop: feeds one mixed chunk as soon as the player
-  /// accepts data, keeping the native buffer full and immune to timer jitter.
+  /// Pull-driven playout; keeps the player buffer full.
   Future<void> _runPlayout() async {
     while (!_disposed) {
       final mixed = _mixer.mix(DateTime.now()) ?? _silence;
@@ -186,8 +182,6 @@ class VoiceSession {
     }
   }
 
-  /// Starts or stops microphone capture; each 40 ms chunk is framed and sent
-  /// over the socket.
   Future<void> setTransmitting(bool on) async {
     if (on == _transmitting) return;
     if (_captureInProgress) return;

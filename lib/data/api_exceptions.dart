@@ -1,6 +1,4 @@
-/// Typed failures from the termchat HTTP API. Keeps error types distinct so
-/// callers no longer parse stringified exceptions to tell apart offline vs.
-/// server vs. malformed responses.
+/// Typed failures from the termchat HTTP API.
 sealed class ApiException implements Exception {
   const ApiException(this.message);
 
@@ -17,8 +15,7 @@ class ApiNetworkException extends ApiException {
   final Object? cause;
 }
 
-/// The server answered with a non-2xx status. Carries a truncated body
-/// snippet so failures are debuggable without dumping pages of HTML.
+/// Non-2xx status with a truncated body snippet for debuggability.
 class ApiServerException extends ApiException {
   const ApiServerException(this.statusCode, [this.bodySnippet = ''])
     : super('Server error');
@@ -32,7 +29,6 @@ class ApiServerException extends ApiException {
       : 'Server error ($statusCode): $bodySnippet';
 }
 
-/// The response body was not valid JSON or had an unexpected shape.
 class ApiParseException extends ApiException {
   const ApiParseException(super.message);
 }

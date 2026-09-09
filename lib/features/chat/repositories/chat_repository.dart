@@ -16,8 +16,7 @@ import '../voice/voice_session.dart';
 
 enum ConnectionStatus { disconnected, connecting, connected, reconnecting }
 
-/// Creates voice sessions; injected so tests can substitute fakes instead
-/// of dialing real media sockets and audio hardware.
+/// VoiceSession factory (fakeable in tests).
 typedef VoiceSessionFactory = Future<VoiceSession> Function({
   required String mediaUrl,
   required String room,
@@ -57,7 +56,7 @@ class ChatRepositoryImpl implements ChatRepository {
     : _channelFactory = WebSocketChannel.connect,
       _voiceFactory = VoiceSession.connect;
 
-  /// Test seam: inject a fake channel factory to avoid real sockets.
+  /// Test seam: fake channel factory.
   @visibleForTesting
   ChatRepositoryImpl.forTest({
     required WebSocketChannel Function(Uri uri) channelFactory,
@@ -139,8 +138,7 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> _establishConnection() async {
     if (_isDisposed) return;
 
-    // Drop any previous socket/subscription before dialing a new one so
-    // reconnects never leak the old channel.
+    // Drop old socket so reconnects don't leak.
     await _channelSub?.cancel();
     _channelSub = null;
     try {
@@ -190,10 +188,8 @@ class ChatRepositoryImpl implements ChatRepository {
         }
 
         if (msg.type == 'error') {
-          // Any server rejection fails the handshake; only a clean first
-          // frame marks the room connected. After the handshake, only a
-          // session-invalidating password error tears down; transient
-          // errors (e.g. rate limits) are non-fatal.
+          // Only first-frame success connects; only invalid_password tears
+          // down after the handshake.
           final code = msg.text ?? 'server_error';
           if (!completer.isCompleted) {
             completer.completeError(code);
@@ -317,8 +313,7 @@ class ChatRepositoryImpl implements ChatRepository {
     );
   }
 
-  /// Sends immediately when connected, otherwise queues (bounded) for flush
-  /// on reconnect. Typing is ephemeral and dropped while offline.
+  /// Sends when connected, else queues (typing dropped); flushes on reconnect.
   void _sendOrQueue(BackendMessage msg, {bool dropWhenOffline = false}) {
     if (_isDisposed) return;
     final channel = _channel;
@@ -345,8 +340,7 @@ class ChatRepositoryImpl implements ChatRepository {
       try {
         _channel?.sink.add(jsonEncode(pending[i].toJson()));
       } catch (_) {
-        // Re-queue the failed message AND everything after it to preserve
-        // order; nothing is dropped.
+        // Re-queue failed + later messages to preserve order.
         _pendingSends.insertAll(0, pending.sublist(i));
         break;
       }
@@ -444,8 +438,7 @@ class ChatRepositoryImpl implements ChatRepository {
     }
   }
 
-  /// Dials the media session without touching the want/retry bookkeeping,
-  /// so rejoin attempts don't clear the user's intent on transient failure.
+  /// Dials media without clearing rejoin intent on transient failure.
   Future<void> _establishVoice() async {
     final token = await _requestMediaToken();
     final session = await _voiceFactory(
@@ -509,8 +502,7 @@ class ChatRepositoryImpl implements ChatRepository {
     return token;
   }
 
-  /// Completes a pending media-token request with an error instead of
-  /// dropping it (a dropped completer hangs the awaiting joinVoice forever).
+  /// Fails a pending token request instead of hanging joinVoice.
   void _failPendingMediaToken(Object error) {
     final pending = _mediaTokenCompleter;
     _mediaTokenCompleter = null;
@@ -566,7 +558,7 @@ class ChatRepositoryImpl implements ChatRepository {
     if (_isDisposed || !_voiceWanted || _voice != null) return;
 
     if (_connectionStatus != ConnectionStatus.connected) {
-      // Offline: stay pending; the reconnect completion path retries.
+      // Stay pending; the reconnect path retries.
       _voiceRejoinPending = true;
       return;
     }
@@ -581,8 +573,7 @@ class ChatRepositoryImpl implements ChatRepository {
         _voiceErrorsController.add(e.toString());
       }
       if (_voiceRejoinAttempts >= maxVoiceRejoinAttempts) {
-        // Bounded retries: give up instead of draining the battery in a
-        // 1s loop against a permanent failure (e.g. revoked mic).
+        // Give up on permanent failure (e.g. revoked mic).
         _voiceWanted = false;
         _voiceRejoinPending = false;
         _voiceRejoinAttempts = 0;
@@ -628,7 +619,6 @@ class ChatRepositoryImpl implements ChatRepository {
     _channelSub?.cancel();
     _voiceEventSub?.cancel();
     _failPendingMediaToken(StateError('disposed'));
-    // Best-effort close; controllers guarded by isClosed on every add.
     try {
       _channel?.sink.close();
     } catch (_) {}

@@ -103,8 +103,8 @@ class RoomUsersDrawer extends StatelessWidget {
                     if (roomCode.isNotEmpty) {
                       context.read<ActiveChatsManager>().remove(roomCode);
                     }
-                    Navigator.pop(context); // close bottom sheet
-                    context.go('/'); // Go back to home
+                    Navigator.pop(context);
+                    context.go('/');
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,

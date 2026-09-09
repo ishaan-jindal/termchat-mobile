@@ -63,9 +63,7 @@ class ChatPage extends StatelessWidget {
           (previous.error != current.error && current.error != null) ||
           (previous.voiceError != current.voiceError &&
               current.voiceError != null),
-      // Message bodies and reaction toggles are rendered by MessageList's
-      // own subscription; rebuilding the whole Scaffold (input field
-      // included) on every message is pure waste.
+      // MessageList subscribes itself; skip rebuild on every message.
       buildWhen: (previous, current) =>
           previous.roomCode != current.roomCode ||
           previous.users != current.users ||

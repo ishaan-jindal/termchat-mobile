@@ -11,9 +11,7 @@ final getIt = GetIt.instance;
 void configureDependencies() {
   getIt.init();
 
-  // ActiveChatsManager needs a ChatBloc factory (a function type, which the
-  // injectable generator can't resolve). Register it manually, wired to the
-  // factory ChatBloc so it stays mockable and out of the service locator.
+  // Manual: injectable can't resolve the ChatBloc factory function type.
   getIt.registerLazySingleton<ActiveChatsManager>(
     () => ActiveChatsManager(() => getIt<ChatBloc>()),
   );
