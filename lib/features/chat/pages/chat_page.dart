@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/widgets/password_prompt_modal.dart';
+import '../../settings/bloc/identity/identity_bloc.dart' as identity;
+import '../bloc/chat_bloc.dart';
+import '../managers/active_chats_manager.dart';
+import '../repositories/chat_repository.dart';
+import '../widgets/chat_input_area.dart';
 import '../widgets/chat_top_bar.dart';
 import '../widgets/message_list.dart';
-import '../widgets/chat_input_area.dart';
 import '../widgets/room_users_drawer.dart';
 import '../widgets/voice_control_bar.dart';
-import '../bloc/chat_bloc.dart';
-import '../repositories/chat_repository.dart';
-
-import 'package:go_router/go_router.dart';
-
-import '../managers/active_chats_manager.dart';
-import '../../settings/bloc/identity/identity_bloc.dart' as identity;
-import '../../../core/widgets/password_prompt_modal.dart';
 
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
@@ -107,7 +105,9 @@ class ChatPage extends StatelessWidget {
         } else if (state.error != null) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text('Error: ${state.error}')));
-          if (!state.isConnected) {
+          // Only bounce home when the join itself failed; mid-chat send
+          // failures keep their context.
+          if (!state.isConnected && state.messages.isEmpty) {
             context.go('/');
           }
         }
@@ -135,10 +135,13 @@ class ChatPage extends StatelessWidget {
                   color: colorScheme.tertiary.withValues(alpha: 0.12),
                   padding: const EdgeInsets.all(8.0),
                   child: Center(
-                    child: Text(
-                      'Reconnecting...',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colorScheme.tertiary,
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        'Reconnecting...',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.tertiary,
+                        ),
                       ),
                     ),
                   ),
@@ -148,10 +151,13 @@ class ChatPage extends StatelessWidget {
                   color: colorScheme.error.withValues(alpha: 0.1),
                   padding: const EdgeInsets.all(8.0),
                   child: Center(
-                    child: Text(
-                      'Disconnected',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colorScheme.error,
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        'Disconnected',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.error,
+                        ),
                       ),
                     ),
                   ),

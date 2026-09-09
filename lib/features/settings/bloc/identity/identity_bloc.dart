@@ -49,7 +49,7 @@ class IdentityBloc extends Bloc<IdentityEvent, IdentityState> {
           ),
         );
       } catch (e) {
-        emit(IdentityError(e.toString()));
+        emit(IdentityError(e.toString(), currentUser));
       }
     }
   }
@@ -72,7 +72,7 @@ class IdentityBloc extends Bloc<IdentityEvent, IdentityState> {
           ),
         );
       } catch (e) {
-        emit(IdentityError(e.toString()));
+        emit(IdentityError(e.toString(), currentUser));
       }
     }
   }

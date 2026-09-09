@@ -21,6 +21,24 @@ void main() {
     });
   });
 
+  group('asString', () {
+    test('passes strings through', () {
+      expect(asString('hi'), 'hi');
+    });
+
+    test('stringifies numbers and bools', () {
+      expect(asString(7), '7');
+      expect(asString(1.5), '1.5');
+      expect(asString(true), 'true');
+    });
+
+    test('returns null for null and structured values', () {
+      expect(asString(null), isNull);
+      expect(asString([1]), isNull);
+      expect(asString({'a': 1}), isNull);
+    });
+  });
+
   group('asBool', () {
     test('passes bools through', () {
       expect(asBool(true), isTrue);

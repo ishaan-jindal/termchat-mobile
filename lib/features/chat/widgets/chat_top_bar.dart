@@ -60,7 +60,10 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
               const SizedBox(width: AppConstants.spacing8),
-              Text(statusLabel, style: textTheme.bodySmall),
+              Semantics(
+                liveRegion: true,
+                child: Text(statusLabel, style: textTheme.bodySmall),
+              ),
             ],
           ),
         ],
@@ -86,6 +89,7 @@ class ChatTopBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           child: Text(
             '$usersCount users ›',
+            semanticsLabel: '$usersCount users, open user list',
             style: textTheme.bodySmall,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

@@ -112,6 +112,20 @@ void main() {
       expect(rooms[0].id, 'r1');
     });
 
+    test('caps huge discover lists', () async {
+      client = MockClient(
+        (_) async => http.Response(
+          jsonEncode(List.generate(600, (i) => {'id': 'r$i'})),
+          200,
+        ),
+      );
+      repository = RoomRepositoryImpl(client);
+
+      final rooms = await repository.getActiveSessions();
+
+      expect(rooms, hasLength(500));
+    });
+
     test('server error carries a truncated body snippet', () async {
       client = MockClient((_) async => http.Response('oops', 500));
       repository = RoomRepositoryImpl(client);

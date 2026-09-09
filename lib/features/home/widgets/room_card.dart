@@ -78,7 +78,7 @@ class RoomCard extends StatelessWidget {
               ),
               minimumSize: const Size(48, 48),
             ),
-            child: const Text('join →'),
+            child: const Text('join →', semanticsLabel: 'join'),
           ),
         ],
       ),

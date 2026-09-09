@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/chat/bloc/chat_bloc.dart';
 import '../../features/chat/managers/active_chats_manager.dart';
+import '../../features/chat/repositories/chat_repository.dart';
 import '../../features/settings/bloc/identity/identity_bloc.dart';
 import '../constants/app_constants.dart';
 import '../widgets/password_prompt_modal.dart';
@@ -27,9 +28,15 @@ class RoomJoinHelper {
     }
 
     final chatBloc = context.read<ActiveChatsManager>().getOrCreate(roomCode);
-    final isConnected = chatBloc.state.isConnected || chatBloc.state.isLoading;
+    final blocState = chatBloc.state;
+    // Connected, loading, or backing off: a join is already in flight, so
+    // navigate and let it settle instead of firing a second ConnectChat.
+    final joinInFlight =
+        blocState.isConnected ||
+        blocState.isLoading ||
+        blocState.connectionStatus == ConnectionStatus.reconnecting;
 
-    if (isLocked && !isConnected) {
+    if (isLocked && !joinInFlight) {
       final password = await showModalBottomSheet<String>(
         context: context,
         isScrollControlled: true,
@@ -46,7 +53,7 @@ class RoomJoinHelper {
           password: password,
         ),
       );
-    } else if (!isConnected) {
+    } else if (!joinInFlight) {
       chatBloc.add(
         ConnectChat(roomCode: roomCode, nick: nick, colorHex: colorHex),
       );

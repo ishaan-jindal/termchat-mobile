@@ -41,6 +41,12 @@ linter:
     require_trailing_commas: true
     prefer_final_locals: true
     avoid_dynamic_calls: true
+    directives_ordering: true
+    sort_pub_dependencies: true
+    prefer_single_quotes: true
+    use_string_buffers: true
+    depend_on_referenced_packages: true
+    avoid_slow_async_io: true
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

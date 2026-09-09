@@ -86,22 +86,31 @@ class _VoiceControlBarState extends State<VoiceControlBar> {
                         ? 'voice locked on - tap mic to stop'
                         : 'hold the mic to talk',
                     style: textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: AppConstants.spacing4),
                   Text(
                     '${widget.speakersCount} in voice',
                     style: textTheme.labelSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            IconButton(
-              onPressed: _toggleLock,
-              tooltip: _locked ? 'Unlock transmit' : 'Lock transmit on',
-              icon: Icon(_locked ? Icons.lock : Icons.lock_open),
-              color: _locked
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
+            Semantics(
+              button: true,
+              selected: _locked,
+              label: _locked ? 'Unlock transmit' : 'Lock transmit on',
+              child: IconButton(
+                onPressed: _toggleLock,
+                tooltip: _locked ? 'Unlock transmit' : 'Lock transmit on',
+                icon: Icon(_locked ? Icons.lock : Icons.lock_open),
+                color: _locked
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(width: AppConstants.spacing8),
             Semantics(

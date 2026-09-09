@@ -6,9 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/models/room.dart';
 import '../../../data/api_exceptions.dart';
 import '../../../data/models/backend_room_info.dart';
-import '../../../core/models/room.dart';
 
 abstract class RoomRepository {
   Future<List<Room>> getActiveSessions();
@@ -62,7 +62,7 @@ class RoomRepositoryImpl implements RoomRepository {
     }
 
     final rooms = <Room>[];
-    for (final entry in rawList) {
+    for (final entry in rawList.take(AppConstants.maxDiscoverRooms)) {
       if (entry is! Map<String, dynamic>) continue;
       try {
         final backendRoom = BackendRoomInfo.fromJson(entry);

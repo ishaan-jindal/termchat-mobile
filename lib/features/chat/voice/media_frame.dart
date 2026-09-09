@@ -61,3 +61,13 @@ MediaFrame? parseMediaFrame(Uint8List frame) {
     payload: Uint8List.sublistView(frame, mediaHeaderLen, frame.length),
   );
 }
+
+/// Whether a parsed frame is safe to push into the mixer. Exact payload
+/// size is required: the mixer indexes a full chunk, so short frames would
+/// throw RangeError and long ones would silently truncate.
+bool isPlayableAudioFrame(MediaFrame? frame) =>
+    frame != null &&
+    frame.kind == mediaKindAudio &&
+    frame.codec == mediaCodecPcm16 &&
+    frame.voiceId != 0 &&
+    frame.payload.length == audioChunkBytes;

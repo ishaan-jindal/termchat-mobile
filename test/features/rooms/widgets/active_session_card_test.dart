@@ -14,14 +14,19 @@ void main() {
   }) {
     return MaterialApp(
       home: Scaffold(
-        body: ActiveSessionCard(
-          roomName: roomName,
-          isHost: isHost,
-          isViewing: isViewing,
-          usersCount: usersCount,
-          unreadCount: unreadCount,
-          lastMessageText: lastMessageText,
-          onTap: onTap ?? () {},
+        // Mirror production: cards live in width-bounded lists, which
+        // Flexible overflow handling requires.
+        body: SizedBox(
+          width: 400,
+          child: ActiveSessionCard(
+            roomName: roomName,
+            isHost: isHost,
+            isViewing: isViewing,
+            usersCount: usersCount,
+            unreadCount: unreadCount,
+            lastMessageText: lastMessageText,
+            onTap: onTap ?? () {},
+          ),
         ),
       ),
     );

@@ -7,7 +7,7 @@ class BackendReaction {
   BackendReaction({required this.name, required this.count});
 
   factory BackendReaction.fromJson(Map<String, dynamic> json) {
-    final name = json['name'] as String?;
+    final name = asString(json['name']);
     if (name == null || name.isEmpty) {
       throw const FormatException('missing reaction name');
     }

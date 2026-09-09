@@ -7,14 +7,23 @@ import 'package:injectable/injectable.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../data/models/backend_message.dart';
-import '../../../data/models/backend_user_info.dart';
 import '../../../core/models/message.dart';
 import '../../../core/models/reaction.dart';
+import '../../../data/models/backend_message.dart';
+import '../../../data/models/backend_user_info.dart';
 import '../models/reaction_update.dart';
 import '../voice/voice_session.dart';
 
 enum ConnectionStatus { disconnected, connecting, connected, reconnecting }
+
+/// Rejected room password. toString stays 'invalid_password' so existing
+/// string checks keep working while callers can match on the type.
+class InvalidPasswordException implements Exception {
+  const InvalidPasswordException();
+
+  @override
+  String toString() => 'invalid_password';
+}
 
 /// VoiceSession factory (fakeable in tests).
 typedef VoiceSessionFactory = Future<VoiceSession> Function({
@@ -84,6 +93,7 @@ class ChatRepositoryImpl implements ChatRepository {
 
   VoiceSession? _voice;
   StreamSubscription<VoiceSessionEvent>? _voiceEventSub;
+  Future<void>? _voiceJoinFuture;
   bool _voiceWanted = false;
   bool _voiceRejoinPending = false;
   int _voiceRejoinAttempts = 0;
@@ -123,6 +133,8 @@ class ChatRepositoryImpl implements ChatRepository {
     _nick = nick;
     _password = password;
     _reconnectAttempts = 0;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     _pendingSends.clear();
     _isDisposed = false;
 
@@ -191,12 +203,15 @@ class ChatRepositoryImpl implements ChatRepository {
           // Only first-frame success connects; only invalid_password tears
           // down after the handshake.
           final code = msg.text ?? 'server_error';
+          final failure = code == 'invalid_password'
+              ? const InvalidPasswordException()
+              : code;
           if (!completer.isCompleted) {
-            completer.completeError(code);
+            completer.completeError(failure);
             unawaited(disconnect());
-          } else if (code == 'invalid_password') {
+          } else if (failure is InvalidPasswordException) {
             if (!_messagesController.isClosed) {
-              _messagesController.addError(code);
+              _messagesController.addError(failure);
             }
             unawaited(disconnect());
           }
@@ -289,6 +304,9 @@ class ChatRepositoryImpl implements ChatRepository {
     if (_reconnectAttempts >= maxReconnectAttempts) {
       _pendingSends.clear();
       _updateStatus(ConnectionStatus.disconnected);
+      if (!_messagesController.isClosed) {
+        _messagesController.addError('Could not reconnect. Please try again.');
+      }
       return;
     }
 
@@ -356,7 +374,10 @@ class ChatRepositoryImpl implements ChatRepository {
       final timestamp = ts != null
           ? DateTime.fromMillisecondsSinceEpoch(ts)
           : DateTime.now();
-      final nick = backendMsg.nick ?? 'system';
+      final nick = _truncate(
+        backendMsg.nick ?? 'system',
+        AppConstants.maxNickLength,
+      );
       final id =
           backendMsg.id?.toString() ??
           (ts != null
@@ -368,7 +389,10 @@ class ChatRepositoryImpl implements ChatRepository {
         senderId: nick,
         senderNickname: nick,
         senderColorHex: backendMsg.color ?? '#FFFFFF',
-        content: backendMsg.text ?? '',
+        content: _truncate(
+          backendMsg.text ?? '',
+          AppConstants.maxMessageTextLength,
+        ),
         timestamp: timestamp,
         isSystemMessage: backendMsg.type == 'system',
         reactions:
@@ -378,11 +402,19 @@ class ChatRepositoryImpl implements ChatRepository {
             const [],
         replyToId: backendMsg.replyToId,
         replyToNick: backendMsg.replyToNick,
-        replyToText: backendMsg.replyToText,
+        replyToText: backendMsg.replyToText == null
+            ? null
+            : _truncate(
+                backendMsg.replyToText!,
+                AppConstants.maxMessageTextLength,
+              ),
       );
       _messagesController.add(msg);
     }
   }
+
+  static String _truncate(String value, int maxLength) =>
+      value.length <= maxLength ? value : value.substring(0, maxLength);
 
   @override
   Future<void> sendMessage(String content, {int? replyToId}) async {
@@ -419,6 +451,8 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<void> joinVoice() async {
     if (_voice != null) return;
+    final inFlight = _voiceJoinFuture;
+    if (inFlight != null) return inFlight;
 
     if (_channel == null ||
         _connectionStatus != ConnectionStatus.connected ||
@@ -429,6 +463,16 @@ class ChatRepositoryImpl implements ChatRepository {
     _voiceWanted = true;
     _voiceRejoinAttempts = 0;
 
+    final future = _joinVoiceInner();
+    _voiceJoinFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_voiceJoinFuture, future)) _voiceJoinFuture = null;
+    }
+  }
+
+  Future<void> _joinVoiceInner() async {
     try {
       await _establishVoice();
     } catch (_) {
@@ -447,7 +491,7 @@ class ChatRepositoryImpl implements ChatRepository {
       token: token,
     );
 
-    if (_isDisposed) {
+    if (_isDisposed || !_voiceWanted) {
       await session.dispose();
 
       return;
@@ -486,7 +530,16 @@ class ChatRepositoryImpl implements ChatRepository {
     final completer = Completer<String>();
     _mediaTokenCompleter = completer;
 
-    channel.sink.add(jsonEncode(BackendMessage(type: 'media_token').toJson()));
+    try {
+      channel.sink.add(
+        jsonEncode(BackendMessage(type: 'media_token').toJson()),
+      );
+    } catch (_) {
+      if (identical(_mediaTokenCompleter, completer)) {
+        _mediaTokenCompleter = null;
+      }
+      rethrow;
+    }
 
     final token = await completer.future.timeout(
       AppConstants.mediaTokenTimeout,

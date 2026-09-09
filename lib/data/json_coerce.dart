@@ -1,4 +1,12 @@
 /// Coerces numbers/bools sent as strings instead of throwing.
+String? asString(Object? value) {
+  if (value == null) return null;
+  if (value is String) return value;
+  if (value is num || value is bool) return value.toString();
+  return null;
+}
+
+/// Coerces numbers/bools sent as strings instead of throwing.
 int? asInt(Object? value) {
   if (value == null) return null;
   if (value is int) return value;

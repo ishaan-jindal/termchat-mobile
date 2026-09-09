@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'di/injection.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_lifecycle_tracker.dart';
 import 'core/utils/notification_helper.dart';
+import 'di/injection.dart';
+import 'features/chat/managers/active_chats_manager.dart';
+import 'features/rooms/bloc/rooms_bloc.dart';
 import 'features/settings/bloc/identity/identity_bloc.dart';
 import 'features/settings/bloc/settings/settings_bloc.dart';
-import 'features/rooms/bloc/rooms_bloc.dart';
-import 'features/chat/managers/active_chats_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

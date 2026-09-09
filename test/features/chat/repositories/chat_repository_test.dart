@@ -140,7 +140,7 @@ void main() {
         jsonEncode({'type': 'error', 'text': 'invalid_password'}),
       );
 
-      await expectLater(connect, throwsA('invalid_password'));
+      await expectLater(connect, throwsA(isA<InvalidPasswordException>()));
       await pump();
     });
 
@@ -246,9 +246,45 @@ void main() {
       expect(messages.single.content, 'ok');
       await sub.cancel();
     });
+
+    test('truncates oversized text and nicks', () async {
+      await connectAndHandshake();
+
+      final messages = <Message>[];
+      final sub = repo.messages.listen(messages.add);
+
+      channel().serverSend(
+        jsonEncode({'type': 'chat', 'nick': 'N' * 100, 'text': 'x' * 5000}),
+      );
+
+      await pump();
+      expect(messages.single.senderNickname, hasLength(64));
+      expect(messages.single.content, hasLength(4000));
+      await sub.cancel();
+    });
   });
 
   group('reconnect', () {
+    test('fresh connect cancels a pending reconnect timer', () async {
+      await connectAndHandshake();
+
+      channels.first.serverDone();
+      await pump();
+
+      // Reconnect before the backoff timer fires.
+      final again = repo.connect('ROOM', 'Alice');
+      await pump();
+      channel().serverSend(jsonEncode({'type': 'ok'}));
+      await again;
+      await pump();
+      expect(channels, hasLength(2));
+
+      // Past the original backoff window: no stale redial.
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      await pump();
+      expect(channels, hasLength(2));
+    });
+
     test('re-enters reconnecting on socket close and reconnects', () async {
       await connectAndHandshake();
 
@@ -381,29 +417,30 @@ void main() {
       },
     );
 
-    test('a second token request fails the superseded first one', () async {
+    test('concurrent joinVoice calls share one token request', () async {
       await connectAndHandshake();
 
       final first = repo.joinVoice();
       await pump();
-      final firstExpectation = expectLater(
-        first,
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            'media token request superseded',
-          ),
-        ),
-      );
       final second = repo.joinVoice();
-      await pump();
+      // Attach matchers before disconnect fires the shared failure.
+      final firstExpectation = expectLater(first, throwsStateError);
       final secondExpectation = expectLater(second, throwsStateError);
 
       await repo.disconnect();
 
       await firstExpectation;
       await secondExpectation;
+    });
+
+    test('closed sink fails the token request immediately', () async {
+      await connectAndHandshake();
+
+      channel().throwOnSend = true;
+      final join = repo.joinVoice();
+      final expectation = expectLater(join, throwsStateError);
+
+      await expectation;
     });
   });
 
@@ -516,6 +553,67 @@ void main() {
       expect(voiceFactoryCalls, 6);
 
       await sub.cancel();
+    });
+
+    test('concurrent joinVoice shares one dial attempt', () async {
+      await connectAndHandshake();
+
+      final first = repo.joinVoice();
+      final second = repo.joinVoice();
+      await answerTokenUntil(1);
+      await first;
+      await second;
+      await pump();
+
+      expect(voiceFactoryCalls, 1);
+    });
+
+    test('leave during dial discards the session', () async {
+      await connectAndHandshake();
+
+      final active = <bool>[];
+      final sub = repo.voiceActive.listen(active.add);
+
+      final join = repo.joinVoice();
+      await pump();
+      await repo.leaveVoice();
+      await answerTokenUntil(1);
+      await join;
+      await pump();
+
+      expect(voiceFactoryCalls, 1);
+      verify(() => voiceSession.dispose()).called(1);
+      expect(active, isNot(contains(true)));
+      await sub.cancel();
+    });
+
+    test('rejoin supersedes an overlapping explicit join token', () async {
+      await connectAndHandshake();
+      await joinVoiceFlow();
+      expect(voiceFactoryCalls, 1);
+
+      voiceEvents.add(VoiceSessionEnded());
+      await pump();
+
+      final explicit = repo.joinVoice();
+      final explicitExpectation = expectLater(
+        explicit,
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'media token request superseded',
+          ),
+        ),
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 1200));
+      await pump();
+      await answerTokenUntil(2);
+      await explicitExpectation;
+      await pump();
+
+      expect(voiceFactoryCalls, 2);
     });
   });
 }

@@ -59,19 +59,24 @@ class AppTheme {
       brightness: isDark ? Brightness.dark : Brightness.light,
 
       primary: isDark ? AppColors.primaryDark : AppColors.primaryLight,
-      onPrimary: Colors.white,
+      onPrimary: isDark ? Colors.black : Colors.white,
 
       secondary: isDark ? AppColors.secondaryDark : AppColors.secondaryLight,
       onSecondary: Colors.black,
 
       tertiary: isDark ? AppColors.successDark : AppColors.successLight,
-      onTertiary: Colors.white,
+      onTertiary: Colors.black,
 
       error: isDark ? AppColors.errorDark : AppColors.errorLight,
-      onError: Colors.white,
+      onError: isDark ? Colors.black : Colors.white,
 
       surface: surface,
       onSurface: primaryText,
+      onSurfaceVariant: secondaryText,
+      surfaceContainerHighest: elevated,
+      surfaceContainer: surface,
+      outline: border,
+      outlineVariant: strongBorder,
     );
 
     return ThemeData(

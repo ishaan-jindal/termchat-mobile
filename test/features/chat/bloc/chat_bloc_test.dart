@@ -193,6 +193,15 @@ void main() {
         verify(() => mockRepo.updateColor('#FF0000')).called(1);
       });
 
+      test('rejects invalid /color without calling the repo', () async {
+        chatBloc.add(const SendMessage('/color notacolor'));
+
+        await waitForState(chatBloc, (s) => s.error != null);
+
+        verifyNever(() => mockRepo.updateColor(any()));
+        expect(chatBloc.state.error, contains('Invalid color'));
+      });
+
       test('handles /password command', () async {
         when(() => mockRepo.setPassword('secret')).thenAnswer((_) async {});
 

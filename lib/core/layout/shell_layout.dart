@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../constants/app_constants.dart';
-import '../theme/app_colors.dart';
 
 class ShellLayout extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -74,26 +73,39 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
-    final isDark = theme.brightness == Brightness.dark;
 
     final color = isSelected
-        ? (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight)
-        : (isDark ? AppColors.textTertiaryDark : AppColors.textTertiaryLight);
+        ? theme.colorScheme.onSurface
+        : theme.colorScheme.onSurfaceVariant;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            height: 2,
-            width: 24,
-            color: isSelected ? color : Colors.transparent,
-            margin: const EdgeInsets.only(bottom: AppConstants.spacing4),
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 64, minHeight: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                height: 2,
+                width: 24,
+                color: isSelected ? color : Colors.transparent,
+                margin: const EdgeInsets.only(bottom: AppConstants.spacing4),
+              ),
+              Text(
+                label,
+                style: textTheme.bodySmall?.copyWith(color: color),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-          Text(label, style: textTheme.bodySmall?.copyWith(color: color)),
-        ],
+        ),
       ),
     );
   }

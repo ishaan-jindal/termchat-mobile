@@ -156,7 +156,6 @@ class _NotificationSettingsState extends State<NotificationSettings>
                     subtitle,
                     style: textTheme.labelSmall?.copyWith(
                       color: theme.disabledColor,
-                      fontSize: 10,
                     ),
                   ),
                 ],
@@ -171,7 +170,7 @@ class _NotificationSettingsState extends State<NotificationSettings>
               child: Switch(
                 value: value,
                 onChanged: onChanged,
-                activeThumbColor: theme.colorScheme.tertiary,
+                activeThumbColor: theme.colorScheme.primary,
               ),
             ),
           ),

@@ -77,6 +77,8 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
             Text(
               '${widget.roomCode} requires a password',
               style: textTheme.bodySmall,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: AppConstants.spacing16),
             BlocBuilder<IdentityBloc, IdentityState>(
@@ -112,6 +114,8 @@ class _PasswordPromptModalState extends State<PasswordPromptModal> {
                           color: color,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],

@@ -17,10 +17,12 @@ class HomeHeader extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              '\$ ',
-              style: AppTextStyles.wordmark.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.5),
+            ExcludeSemantics(
+              child: Text(
+                '\$ ',
+                style: AppTextStyles.wordmark.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
               ),
             ),
             Text(

@@ -154,7 +154,6 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                 icon: const Icon(Icons.close),
                 onPressed: widget.onCancelReply,
                 tooltip: 'Cancel reply',
-                visualDensity: VisualDensity.compact,
               ),
           ],
         ),

@@ -4,8 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/color_utils.dart';
-import '../bloc/identity/identity_bloc.dart';
 import '../../chat/bloc/chat_bloc.dart' as chat_bloc;
+import '../bloc/identity/identity_bloc.dart';
 import 'settings_section_header.dart';
 
 class IdentitySettings extends StatelessWidget {
@@ -74,59 +74,73 @@ class IdentitySettings extends StatelessWidget {
             const SettingsSectionHeader(title: 'identity'),
             Material(
               color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _showEditNicknameModal(context, nick),
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: theme.dividerColor),
+              child: Semantics(
+                button: true,
+                label: 'Edit nickname',
+                hint: 'Double-tap to edit',
+                child: InkWell(
+                  onTap: () => _showEditNicknameModal(context, nick),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: theme.dividerColor),
+                      ),
                     ),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: AppConstants.spacing14,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('nickname', style: textTheme.bodySmall),
-                      Text('/nick $nick ›', style: textTheme.labelSmall),
-                    ],
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppConstants.spacing14,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('nickname', style: textTheme.bodySmall),
+                        Text('/nick $nick ›', style: textTheme.labelSmall),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
             Material(
               color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _showEditColorModal(context, colorHex),
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: theme.dividerColor),
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: AppConstants.spacing14,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('color', style: textTheme.bodySmall),
-                      Row(
-                        children: [
-                          Text('$colorHex ', style: textTheme.labelSmall),
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: ColorUtils.parseHexColor(colorHex),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          Text(' ›', style: textTheme.labelSmall),
-                        ],
+              child: Semantics(
+                button: true,
+                label: 'Edit color',
+                hint: 'Double-tap to edit',
+                child: InkWell(
+                  onTap: () => _showEditColorModal(context, colorHex),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: theme.dividerColor),
                       ),
-                    ],
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppConstants.spacing14,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('color', style: textTheme.bodySmall),
+                        Row(
+                          children: [
+                            Text('$colorHex ', style: textTheme.labelSmall),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: ColorUtils.parseHexColor(colorHex),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            Text(
+                              ' ›',
+                              semanticsLabel: '',
+                              style: textTheme.labelSmall,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

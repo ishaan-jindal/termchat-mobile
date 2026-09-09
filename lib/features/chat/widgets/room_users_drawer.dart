@@ -7,20 +7,24 @@ import '../../../core/utils/color_utils.dart';
 import '../bloc/chat_bloc.dart';
 import '../managers/active_chats_manager.dart';
 
+/// Humanizes a unix join timestamp. `now` is injectable for tests.
+String formatJoinTime(int timestampSecs, DateTime now) {
+  if (timestampSecs == 0) return 'recently';
+  final joinedAt = DateTime.fromMillisecondsSinceEpoch(timestampSecs * 1000);
+  final diff = now.difference(joinedAt);
+  if (diff.inMinutes < 1) return 'just now';
+  if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+  if (diff.inDays < 1) return '${diff.inHours}h ago';
+  return '${diff.inDays}d ago';
+}
+
 class RoomUsersDrawer extends StatelessWidget {
   final String roomName;
 
   const RoomUsersDrawer({super.key, required this.roomName});
 
-  String _formatJoinTime(int timestampSecs) {
-    if (timestampSecs == 0) return 'recently';
-    final joinedAt = DateTime.fromMillisecondsSinceEpoch(timestampSecs * 1000);
-    final diff = DateTime.now().difference(joinedAt);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
+  String _formatJoinTime(int timestampSecs) =>
+      formatJoinTime(timestampSecs, DateTime.now());
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +54,14 @@ class RoomUsersDrawer extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('users in $roomName', style: textTheme.bodySmall),
+                    Expanded(
+                      child: Text(
+                        'users in $roomName',
+                        style: textTheme.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     Text(
                       '${state.users.length} online',
                       style: textTheme.bodySmall,
@@ -89,7 +100,7 @@ class RoomUsersDrawer extends StatelessWidget {
                             isTyping: user.typing,
                             isInVoice: user.voiceId != 0,
                             metaText:
-                                '· joined ${_formatJoinTime(user.joinedAt)}',
+                                'joined ${_formatJoinTime(user.joinedAt)}',
                           ),
                         );
                       },
@@ -133,6 +144,9 @@ class RoomUsersDrawer extends StatelessWidget {
     required String metaText,
   }) {
     final textTheme = Theme.of(context).textTheme;
+    final onAvatar = color.computeLuminance() > 0.5
+        ? Colors.black
+        : Colors.white;
 
     return Row(
       children: [
@@ -144,9 +158,8 @@ class RoomUsersDrawer extends StatelessWidget {
           child: Text(
             username.isNotEmpty ? username.substring(0, 1).toUpperCase() : '?',
             style: textTheme.labelSmall?.copyWith(
-              color: Colors.white,
+              color: onAvatar,
               fontWeight: FontWeight.bold,
-              fontSize: 12,
             ),
           ),
         ),
@@ -173,14 +186,15 @@ class RoomUsersDrawer extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).dividerColor,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         '[host]',
                         style: textTheme.labelSmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 9,
                         ),
                       ),
                     ),
@@ -193,14 +207,19 @@ class RoomUsersDrawer extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).dividerColor,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text(
-                        'typing...',
-                        style: textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 9,
+                      child: Semantics(
+                        liveRegion: true,
+                        label: '$username is typing',
+                        child: Text(
+                          'typing...',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
                       ),
                     ),
@@ -213,7 +232,9 @@ class RoomUsersDrawer extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).dividerColor,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(
@@ -221,7 +242,7 @@ class RoomUsersDrawer extends StatelessWidget {
                         children: [
                           Icon(
                             Icons.mic,
-                            size: 9,
+                            size: 12,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
                           const SizedBox(width: 2),
@@ -229,7 +250,6 @@ class RoomUsersDrawer extends StatelessWidget {
                             'vc',
                             style: textTheme.labelSmall?.copyWith(
                               color: Theme.of(context).colorScheme.onSurface,
-                              fontSize: 9,
                             ),
                           ),
                         ],

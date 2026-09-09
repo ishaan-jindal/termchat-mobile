@@ -155,6 +155,19 @@ void main() {
 
         expect(msg.messages, hasLength(BackendMessage.maxBatchItems));
       });
+
+      test('coerces non-string scalars instead of throwing', () {
+        final msg = BackendMessage.fromJson({
+          'type': 'chat',
+          'nick': 123,
+          'text': 456,
+          'room': true,
+        });
+
+        expect(msg.nick, '123');
+        expect(msg.text, '456');
+        expect(msg.room, 'true');
+      });
     });
 
     group('toJson', () {

@@ -1,21 +1,23 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../../core/models/message.dart';
-import '../../../data/models/backend_user_info.dart';
-import '../models/reaction_update.dart';
 import '../../../core/utils/app_lifecycle_tracker.dart';
-import '../../../core/utils/notification_helper.dart';
 import '../../../core/utils/audio_helper.dart';
+import '../../../core/utils/color_utils.dart';
+import '../../../core/utils/notification_helper.dart';
+import '../../../data/models/backend_user_info.dart';
 import '../../settings/bloc/identity/identity_bloc.dart' as identity;
 import '../../settings/bloc/settings/settings_bloc.dart';
+import '../models/reaction_update.dart';
 import '../repositories/chat_repository.dart';
 
-part 'chat_state.dart';
 part 'chat_event.dart';
+part 'chat_state.dart';
 
 @injectable
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
@@ -78,12 +80,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
       _usersSubscription = _repository.users.listen(
         (users) => add(_UsersUpdated(users)),
-        onError: (error) {},
+        onError: (Object error) => debugPrint('chat users stream: $error'),
       );
 
       _reactionSubscription = _repository.reactionUpdates.listen(
         (update) => add(_ReactionUpdated(update)),
-        onError: (_) {},
+        onError: (Object error) => debugPrint('chat reactions: $error'),
       );
 
       await _voiceActiveSubscription?.cancel();
@@ -91,12 +93,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
       _voiceActiveSubscription = _repository.voiceActive.listen(
         (active) => add(_VoiceActiveChanged(active)),
-        onError: (_) {},
+        onError: (Object error) => debugPrint('chat voiceActive: $error'),
       );
 
       _voiceErrorSubscription = _repository.voiceErrors.listen(
         (error) => add(_VoiceError(error)),
-        onError: (_) {},
+        onError: (Object error) => debugPrint('chat voiceErrors: $error'),
       );
 
       await _repository.connect(
@@ -209,6 +211,10 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   Future<void> _applyColor(String colorHex, Emitter<ChatState> emit) async {
+    if (ColorUtils.tryParseHexColor(colorHex) == null) {
+      emit(state.copyWith(error: 'Invalid color. Use #RGB or #RRGGBB.'));
+      return;
+    }
     try {
       await _repository.updateColor(colorHex);
       _identityBloc.add(identity.UpdateColor(colorHex));

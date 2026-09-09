@@ -76,9 +76,12 @@ class ChatMessageBubble extends StatelessWidget {
                       _buildReplyQuote(context),
                     Text(
                       '> ${message.senderNickname}',
+                      semanticsLabel: message.senderNickname,
                       style: textTheme.titleMedium?.copyWith(
                         color: usernameColor,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -122,36 +125,43 @@ class ChatMessageBubble extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppConstants.spacing4),
-      child: InkWell(
-        onTap: onTapQuote,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppConstants.spacing8,
-            vertical: 2,
-          ),
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(color: Theme.of(context).dividerColor, width: 3),
+      child: Semantics(
+        button: onTapQuote != null,
+        label: 'Jump to quoted message',
+        child: InkWell(
+          onTap: onTapQuote,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.spacing8,
+              vertical: 2,
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                message.replyToNick ?? '',
-                style: textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: Theme.of(context).dividerColor,
+                  width: 3,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                message.replyToText ?? '',
-                style: textTheme.labelSmall,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message.replyToNick ?? '',
+                  style: textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  message.replyToText ?? '',
+                  style: textTheme.labelSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -169,6 +179,7 @@ class ChatMessageBubble extends StatelessWidget {
           final isMine = myReactions.contains('${message.id}:${reaction.name}');
           return Semantics(
             button: onToggleReaction != null,
+            selected: isMine,
             label:
                 '${reactionGlyph(reaction.name)} ${reaction.count}${isMine ? ', selected' : ''}',
             child: InkWell(

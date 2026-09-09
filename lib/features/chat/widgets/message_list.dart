@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../bloc/chat_bloc.dart';
 import '../../settings/bloc/identity/identity_bloc.dart';
+import '../bloc/chat_bloc.dart';
 import 'chat_message_bubble.dart';
 import 'reaction_picker.dart';
 import 'swipe_to_reply.dart';
@@ -18,6 +18,7 @@ class MessageList extends StatefulWidget {
 class _MessageListState extends State<MessageList> {
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _messageKeys = {};
+  int _prunedForLength = 0;
 
   @override
   void dispose() {
@@ -85,9 +86,12 @@ class _MessageListState extends State<MessageList> {
           );
         }
 
-        // Prune keys for evicted messages.
-        final ids = messages.map((m) => m.id).toSet();
-        _messageKeys.removeWhere((id, _) => !ids.contains(id));
+        // Prune keys for evicted messages on length change only.
+        if (messages.length != _prunedForLength) {
+          _prunedForLength = messages.length;
+          final ids = messages.map((m) => m.id).toSet();
+          _messageKeys.removeWhere((id, _) => !ids.contains(id));
+        }
 
         return ListView.separated(
           controller: _scrollController,
@@ -186,6 +190,7 @@ class _MessageListState extends State<MessageList> {
           Expanded(
             child: Text(
               '· $text ·',
+              semanticsLabel: text,
               style: textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),

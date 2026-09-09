@@ -16,6 +16,11 @@ class AppConstants {
   static const String discoverPath = '/discover';
   static const Duration httpTimeout = Duration(seconds: 10);
 
+  // --- Payload bounds (single-frame sanity caps) ---
+  static const int maxMessageTextLength = 4000;
+  static const int maxNickLength = 64;
+  static const int maxDiscoverRooms = 500;
+
   static const Duration wsJoinTimeout = Duration(seconds: 10);
   static const Duration mediaTokenTimeout = Duration(seconds: 5);
   static const Duration roomJoinTimeout = Duration(seconds: 15);

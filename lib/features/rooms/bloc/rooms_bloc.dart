@@ -16,6 +16,8 @@ class RoomsBloc extends Bloc<RoomsEvent, RoomsState> {
 
   final RoomRepository _repository;
   Timer? _refreshTimer;
+  bool _loadedOnce = false;
+  bool _loading = false;
 
   RoomsBloc(this._repository) : super(const RoomsState()) {
     on<LoadActiveSessions>(_onLoadActiveSessions);
@@ -39,12 +41,13 @@ class RoomsBloc extends Bloc<RoomsEvent, RoomsState> {
     LoadActiveSessions event,
     Emitter<RoomsState> emit,
   ) async {
-    // Silent refresh after the initial load to avoid flicker.
-    final isInitialLoad = state.activeSessions.isEmpty && state.error == null;
-    if (isInitialLoad) {
-      emit(state.copyWith(isLoading: true, clearError: true));
-    }
+    if (_loading) return;
+    _loading = true;
     try {
+      // Silent refresh after the initial load to avoid flicker.
+      if (!_loadedOnce) {
+        emit(state.copyWith(isLoading: true, clearError: true));
+      }
       final sessions = await _repository.getActiveSessions();
       emit(
         state.copyWith(
@@ -55,6 +58,9 @@ class RoomsBloc extends Bloc<RoomsEvent, RoomsState> {
       );
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
+    } finally {
+      _loading = false;
+      _loadedOnce = true;
     }
   }
 

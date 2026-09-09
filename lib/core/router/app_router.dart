@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../layout/shell_layout.dart';
-import '../../features/home/pages/home_page.dart';
+import '../../features/chat/managers/active_chats_manager.dart';
 import '../../features/chat/pages/chat_page.dart';
-
-import 'package:flutter_bloc/flutter_bloc.dart';
-
+import '../../features/home/pages/home_page.dart';
 import '../../features/rooms/pages/rooms_page.dart';
 import '../../features/settings/pages/settings_page.dart';
-import '../../features/chat/managers/active_chats_manager.dart';
+import '../layout/shell_layout.dart';
 
 class AppRouter {
   AppRouter(this._activeChatsManager);
@@ -40,6 +38,15 @@ class AppRouter {
                 routes: [
                   GoRoute(
                     path: 'chat/:roomId',
+                    redirect: (context, state) {
+                      final roomId = state.pathParameters['roomId'] ?? '';
+                      if (!RegExp(r'^[A-Za-z0-9]{4}$').hasMatch(roomId)) {
+                        return '/';
+                      }
+                      final upper = roomId.toUpperCase();
+                      if (upper != roomId) return '/chat/$upper';
+                      return null;
+                    },
                     builder: (context, state) {
                       final roomId = state.pathParameters['roomId']!;
                       final chatBloc = _activeChatsManager.getOrCreate(roomId);

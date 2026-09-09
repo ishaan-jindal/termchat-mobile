@@ -7,9 +7,9 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../../../core/constants/app_constants.dart';
 import 'audio_pipeline.dart';
 import 'media_frame.dart';
-import '../../../core/constants/app_constants.dart';
 
 sealed class VoiceSessionEvent {}
 
@@ -18,6 +18,17 @@ class VoiceSessionEnded extends VoiceSessionEvent {}
 class VoiceSessionError extends VoiceSessionEvent {
   final String message;
   VoiceSessionError(this.message);
+}
+
+/// Inspects a decoded handshake reply. Returns null on success, otherwise
+/// the failure message. Never throws on malformed payloads (toString()
+/// coerces non-string fields instead of throwing TypeError).
+String? voiceHandshakeFailure(Map<String, dynamic> json) {
+  if (json['type'] == 'ok') return null;
+  if (json['type'] == 'error') {
+    return json['text']?.toString() ?? 'voice join rejected';
+  }
+  return 'unexpected voice reply';
 }
 
 /// Client for the binary /media WebSocket plus audio pipelines.
@@ -107,15 +118,9 @@ class VoiceSession {
 
     final frame = parseMediaFrame(Uint8List.fromList(data as List<int>));
 
-    if (frame == null ||
-        frame.kind != mediaKindAudio ||
-        frame.codec != mediaCodecPcm16 ||
-        frame.voiceId == 0 ||
-        frame.payload.length.isOdd) {
-      return;
-    }
+    if (!isPlayableAudioFrame(frame)) return;
 
-    _mixer.push(frame.voiceId, frame.payload);
+    _mixer.push(frame!.voiceId, frame.payload);
   }
 
   void _resolveHandshake(dynamic data) {
@@ -135,12 +140,11 @@ class VoiceSession {
       return;
     }
 
-    if (json['type'] == 'error') {
-      _failHandshake(json['text'] as String? ?? 'voice join rejected');
-    } else if (json['type'] == 'ok') {
+    final failure = voiceHandshakeFailure(json);
+    if (failure == null) {
       _handshake.complete();
     } else {
-      _failHandshake('unexpected voice reply');
+      _failHandshake(failure);
     }
   }
 
