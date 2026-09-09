@@ -8,6 +8,9 @@
 # The following line activates a set of recommended lints for Flutter apps,
 # packages, and plugins designed to encourage good coding practices.
 analyzer:
+  language:
+    strict-casts: true
+    strict-raw-types: true
   exclude:
     - build/**
     - android/**
@@ -34,6 +37,10 @@ linter:
     cancel_subscriptions: true
     close_sinks: true
     always_declare_return_types: true
+    unawaited_futures: true
+    require_trailing_commas: true
+    prefer_final_locals: true
+    avoid_dynamic_calls: true
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

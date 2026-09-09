@@ -241,7 +241,7 @@ class ChatRepositoryImpl implements ChatRepository {
           _handleIncomingMessage(msg, _roomCode ?? '');
         }
       },
-      onError: (error) {
+      onError: (Object error) {
         if (_isDisposed) return;
         if (!completer.isCompleted) {
           completer.completeError(error);

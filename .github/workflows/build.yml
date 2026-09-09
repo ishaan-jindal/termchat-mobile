@@ -10,9 +10,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       build: ${{ steps.filter.outputs.build }}
     steps:
@@ -29,12 +34,14 @@ jobs:
               - 'android/**'
               - 'assets/**'
               - 'test/**'
+              - '.github/**'
               - 'analysis_options.yaml'
               - 'pubspec.yaml'
               - 'pubspec.lock'
 
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
@@ -49,6 +56,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.47.2"
           channel: "stable"
           cache: true
 
@@ -69,6 +77,7 @@ jobs:
 
   build-debug-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: [changes, verify]
     if: needs.changes.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
 
@@ -85,6 +94,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.47.2"
           channel: "stable"
           cache: true
 

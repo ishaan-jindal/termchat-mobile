@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:termchat_app/core/models/user.dart';
@@ -35,7 +37,7 @@ void main() {
           isA<IdentityLoaded>().having((s) => s.user, 'user', user),
         ];
 
-        expectLater(identityBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(identityBloc.stream, emitsInOrder(expected)));
 
         identityBloc.add(LoadIdentity());
       });
@@ -53,7 +55,7 @@ void main() {
           ),
         ];
 
-        expectLater(identityBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(identityBloc.stream, emitsInOrder(expected)));
 
         identityBloc.add(LoadIdentity());
       });
@@ -78,7 +80,7 @@ void main() {
           ),
         ];
 
-        expectLater(identityBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(identityBloc.stream, emitsInOrder(expected)));
 
         identityBloc.add(const UpdateNickname('Bob'));
       });
@@ -105,7 +107,7 @@ void main() {
           ),
         ];
 
-        expectLater(identityBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(identityBloc.stream, emitsInOrder(expected)));
 
         identityBloc.add(const UpdateNickname('Bob'));
       });
@@ -127,7 +129,7 @@ void main() {
           ),
         ];
 
-        expectLater(identityBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(identityBloc.stream, emitsInOrder(expected)));
 
         identityBloc.add(const UpdateColor('#00FF00'));
       });
@@ -153,7 +155,7 @@ void main() {
           ),
         ];
 
-        expectLater(identityBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(identityBloc.stream, emitsInOrder(expected)));
 
         identityBloc.add(const UpdateColor('#00FF00'));
       });

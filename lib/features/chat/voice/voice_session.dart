@@ -115,7 +115,7 @@ class VoiceSession {
       return;
     }
 
-    final frame = parseMediaFrame(Uint8List.fromList(data));
+    final frame = parseMediaFrame(Uint8List.fromList(data as List<int>));
 
     if (frame == null ||
         frame.kind != mediaKindAudio ||

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:termchat_app/core/models/room.dart';
@@ -39,7 +41,7 @@ void main() {
           RoomsState(activeSessions: sessions, isLoading: false),
         ];
 
-        expectLater(roomsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(roomsBloc.stream, emitsInOrder(expected)));
 
         roomsBloc.add(LoadActiveSessions());
       });
@@ -53,7 +55,7 @@ void main() {
           const RoomsState(isLoading: false, error: 'Exception: Network error'),
         ];
 
-        expectLater(roomsBloc.stream, emitsInOrder(expected));
+        unawaited(expectLater(roomsBloc.stream, emitsInOrder(expected)));
 
         roomsBloc.add(LoadActiveSessions());
       });

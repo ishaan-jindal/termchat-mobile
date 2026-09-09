@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:termchat_app/core/models/message.dart';
+import 'package:termchat_app/data/models/backend_user_info.dart';
 import 'package:termchat_app/features/chat/repositories/chat_repository.dart';
 import 'package:termchat_app/features/chat/voice/voice_session.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -55,7 +56,7 @@ class _FakeSink implements WebSocketSink {
   final FakeWebSocketChannel _channel;
 
   @override
-  Future get done => _channel.controller.done;
+  Future<void> get done => _channel.controller.done;
 
   @override
   void add(Object? event) {
@@ -72,11 +73,11 @@ class _FakeSink implements WebSocketSink {
   }
 
   @override
-  Future addStream(Stream<dynamic> stream) =>
+  Future<void> addStream(Stream<dynamic> stream) =>
       _channel.controller.addStream(stream);
 
   @override
-  Future close([int? closeCode, String? closeReason]) {
+  Future<void> close([int? closeCode, String? closeReason]) {
     _channel.closed = true;
     return _channel.controller.close();
   }
@@ -210,7 +211,7 @@ void main() {
     test('emits users list', () async {
       await connectAndHandshake();
 
-      final users = <List>[];
+      final users = <List<BackendUserInfo>>[];
       final sub = repo.users.listen(users.add);
 
       channel().serverSend(
