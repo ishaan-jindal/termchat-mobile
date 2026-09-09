@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [Unreleased]
+
+### Fixed
+- Switching tabs or pressing back no longer disconnects your rooms; connections persist until you explicitly leave. (by @ishaan-jindal)
+- Editing your nickname or color no longer crashes when the sheet is dismissed. (by @ishaan-jindal)
+- Voice chat reconnects reliably after drops instead of dying silently. (by @ishaan-jindal)
+
+### Changed
+- Removed `package_info_plus`; the displayed app version is now a pinned constant guarded by a test. (by @ishaan-jindal)
+
 ## [1.4.0] - 2026-09-03
 
 ### Added
